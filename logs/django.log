@@ -1,0 +1,767 @@
+[2025-05-03 09:32:43] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 09:34:30] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\divar_crl\urls.py changed, reloading.
+[2025-05-03 09:34:31] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 09:35:11] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 09:50:51] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 09:53:58] INFO [django.server:213] "GET /admin/ HTTP/1.1" 302 0
+[2025-05-03 09:53:58] INFO [django.server:213] "GET /admin/login/?next=/admin/ HTTP/1.1" 200 4184
+[2025-05-03 09:53:58] INFO [django.server:213] "GET /static/admin/css/nav_sidebar.css HTTP/1.1" 200 2810
+[2025-05-03 09:53:58] INFO [django.server:213] "GET /static/admin/css/dark_mode.css HTTP/1.1" 200 2808
+[2025-05-03 09:53:58] INFO [django.server:213] "GET /static/admin/css/login.css HTTP/1.1" 200 951
+[2025-05-03 09:53:58] INFO [django.server:213] "GET /static/admin/css/base.css HTTP/1.1" 200 22154
+[2025-05-03 09:53:58] INFO [django.server:213] "GET /static/admin/js/theme.js HTTP/1.1" 200 1653
+[2025-05-03 09:53:58] INFO [django.server:213] "GET /static/admin/css/responsive.css HTTP/1.1" 200 16632
+[2025-05-03 09:53:58] INFO [django.server:213] "GET /static/admin/js/nav_sidebar.js HTTP/1.1" 200 3063
+[2025-05-03 09:53:58] WARNING [django.request:248] Not Found: /favicon.ico
+[2025-05-03 09:53:58] WARNING [django.server:213] "GET /favicon.ico HTTP/1.1" 404 2801
+[2025-05-03 09:54:01] WARNING [django.request:248] Not Found: /main/test/
+[2025-05-03 09:54:01] WARNING [django.server:213] "GET /main/test/ HTTP/1.1" 404 2798
+[2025-05-03 09:54:40] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\views.py changed, reloading.
+[2025-05-03 09:54:42] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 09:54:53] ERROR [django.request:248] Internal Server Error: /test/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 204, in _get_response
+    self.check_response(response, callback)
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 332, in check_response
+    raise ValueError(
+ValueError: The view main.views.test didn't return an HttpResponse object. It returned None instead.
+[2025-05-03 09:54:53] ERROR [django.server:213] "GET /test/ HTTP/1.1" 500 71101
+[2025-05-03 09:55:25] WARNING [django.request:248] Not Found: /main/browser_minimize
+[2025-05-03 09:55:25] WARNING [django.server:213] "GET /main/browser_minimize?windowId=466457986&state=minimized HTTP/1.1" 404 2870
+[2025-05-03 09:57:28] WARNING [django.request:248] Not Found: /main/browser_minimize
+[2025-05-03 09:57:28] WARNING [django.server:213] "GET /main/browser_minimize?windowId=466457986&state=minimized HTTP/1.1" 404 2870
+[2025-05-03 09:59:05] WARNING [django.request:248] Not Found: /
+[2025-05-03 09:59:05] WARNING [django.server:213] "GET /?customer=1 HTTP/1.1" 404 2761
+[2025-05-03 09:59:13] ERROR [django.request:248] Internal Server Error: /test/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 204, in _get_response
+    self.check_response(response, callback)
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 332, in check_response
+    raise ValueError(
+ValueError: The view main.views.test didn't return an HttpResponse object. It returned None instead.
+[2025-05-03 09:59:13] ERROR [django.server:213] "GET /test/ HTTP/1.1" 500 71101
+[2025-05-03 09:59:39] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\views.py changed, reloading.
+[2025-05-03 09:59:44] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 09:59:49] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\views.py changed, reloading.
+[2025-05-03 09:59:49] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 09:59:59] INFO [django.server:213] "GET /test/ HTTP/1.1" 200 3
+[2025-05-03 10:01:20] WARNING [django.request:248] Not Found: /main/browser_minimize
+[2025-05-03 10:01:20] WARNING [django.server:213] "GET /main/browser_minimize?windowId=1837126757&state=minimized HTTP/1.1" 404 2871
+[2025-05-03 10:09:40] INFO [django.server:213] "GET /test/ HTTP/1.1" 200 3
+[2025-05-03 10:14:00] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\crawl.py changed, reloading.
+[2025-05-03 10:14:04] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 10:16:35] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\crawl.py changed, reloading.
+[2025-05-03 10:16:36] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 10:16:49] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\views.py changed, reloading.
+[2025-05-03 10:16:50] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 10:16:54] ERROR [django.request:248] Internal Server Error: /test/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\environ\environ.py", line 409, in get_value
+    value = self.ENVIRON[var_name]
+            ~~~~~~~~~~~~^^^^^^^^^^
+  File "<frozen os>", line 679, in __getitem__
+KeyError: 'DRIVER_PATH'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\views.py", line 16, in test
+    driver = advance_setup()
+             ^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\crawl.py", line 114, in advance_setup
+    service = Service(driver_path=env('DRIVER_PATH'))
+                                  ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\environ\environ.py", line 207, in __call__
+    return self.get_value(
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\environ\environ.py", line 413, in get_value
+    raise ImproperlyConfigured(error_msg) from exc
+django.core.exceptions.ImproperlyConfigured: Set the DRIVER_PATH environment variable
+[2025-05-03 10:16:54] ERROR [django.server:213] "GET /test/ HTTP/1.1" 500 94421
+[2025-05-03 10:17:22] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\crawl.py changed, reloading.
+[2025-05-03 10:17:23] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 10:18:58] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 10:19:06] ERROR [django.request:248] Internal Server Error: /test/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\environ\environ.py", line 409, in get_value
+    value = self.ENVIRON[var_name]
+            ~~~~~~~~~~~~^^^^^^^^^^
+  File "<frozen os>", line 679, in __getitem__
+KeyError: 'CHROME_PATH'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\views.py", line 16, in test
+    driver = advance_setup()
+             ^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\crawl.py", line 117, in advance_setup
+    options.binary_location = env('CHROME_PATH')
+                              ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\environ\environ.py", line 207, in __call__
+    return self.get_value(
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\environ\environ.py", line 413, in get_value
+    raise ImproperlyConfigured(error_msg) from exc
+django.core.exceptions.ImproperlyConfigured: Set the CHROME_PATH environment variable
+[2025-05-03 10:19:06] ERROR [django.server:213] "GET /test/ HTTP/1.1" 500 95320
+[2025-05-03 10:19:11] ERROR [django.request:248] Internal Server Error: /test/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\environ\environ.py", line 409, in get_value
+    value = self.ENVIRON[var_name]
+            ~~~~~~~~~~~~^^^^^^^^^^
+  File "<frozen os>", line 679, in __getitem__
+KeyError: 'CHROME_PATH'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\views.py", line 16, in test
+    driver = advance_setup()
+             ^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\crawl.py", line 117, in advance_setup
+    options.binary_location = env('CHROME_PATH')
+                              ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\environ\environ.py", line 207, in __call__
+    return self.get_value(
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\environ\environ.py", line 413, in get_value
+    raise ImproperlyConfigured(error_msg) from exc
+django.core.exceptions.ImproperlyConfigured: Set the CHROME_PATH environment variable
+[2025-05-03 10:19:11] ERROR [django.server:213] "GET /test/ HTTP/1.1" 500 95320
+[2025-05-03 10:19:12] ERROR [django.request:248] Internal Server Error: /test/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\environ\environ.py", line 409, in get_value
+    value = self.ENVIRON[var_name]
+            ~~~~~~~~~~~~^^^^^^^^^^
+  File "<frozen os>", line 679, in __getitem__
+KeyError: 'CHROME_PATH'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\views.py", line 16, in test
+    driver = advance_setup()
+             ^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\crawl.py", line 117, in advance_setup
+    options.binary_location = env('CHROME_PATH')
+                              ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\environ\environ.py", line 207, in __call__
+    return self.get_value(
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\environ\environ.py", line 413, in get_value
+    raise ImproperlyConfigured(error_msg) from exc
+django.core.exceptions.ImproperlyConfigured: Set the CHROME_PATH environment variable
+[2025-05-03 10:19:12] ERROR [django.server:213] "GET /test/ HTTP/1.1" 500 95320
+[2025-05-03 10:19:13] ERROR [django.request:248] Internal Server Error: /test/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\environ\environ.py", line 409, in get_value
+    value = self.ENVIRON[var_name]
+            ~~~~~~~~~~~~^^^^^^^^^^
+  File "<frozen os>", line 679, in __getitem__
+KeyError: 'CHROME_PATH'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\views.py", line 16, in test
+    driver = advance_setup()
+             ^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\crawl.py", line 117, in advance_setup
+    options.binary_location = env('CHROME_PATH')
+                              ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\environ\environ.py", line 207, in __call__
+    return self.get_value(
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\environ\environ.py", line 413, in get_value
+    raise ImproperlyConfigured(error_msg) from exc
+django.core.exceptions.ImproperlyConfigured: Set the CHROME_PATH environment variable
+[2025-05-03 10:19:13] ERROR [django.server:213] "GET /test/ HTTP/1.1" 500 95320
+[2025-05-03 10:19:31] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\crawl.py changed, reloading.
+[2025-05-03 10:19:32] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 10:19:38] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 10:19:50] ERROR [django.request:248] Internal Server Error: /test/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\views.py", line 16, in test
+    driver = advance_setup()
+             ^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\crawl.py", line 133, in advance_setup
+    driver = uc.Chrome(service=service, options=options)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\undetected_chromedriver\__init__.py", line 466, in __init__
+    super(Chrome, self).__init__(
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\chrome\webdriver.py", line 45, in __init__
+    super().__init__(
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\chromium\webdriver.py", line 67, in __init__
+    super().__init__(command_executor=executor, options=options)
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 260, in __init__
+    self.start_session(capabilities)
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\undetected_chromedriver\__init__.py", line 724, in start_session
+    super(selenium.webdriver.chrome.webdriver.WebDriver, self).start_session(
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 357, in start_session
+    response = self.execute(Command.NEW_SESSION, caps)["value"]
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 448, in execute
+    self.error_handler.check_response(response)
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.SessionNotCreatedException: Message: session not created: cannot connect to chrome at 127.0.0.1:54145
+from session not created: This version of ChromeDriver only supports Chrome version 136
+Current browser version is 135.0.7049.95
+Stacktrace:
+	GetHandleVerifier [0x0101FBD3+61635]
+	GetHandleVerifier [0x0101FC14+61700]
+	(No symbol) [0x00E405D3]
+	(No symbol) [0x00E7A04B]
+	(No symbol) [0x00E79069]
+	(No symbol) [0x00E6F7AF]
+	(No symbol) [0x00E6F5E6]
+	(No symbol) [0x00EB8DF3]
+	(No symbol) [0x00EB880A]
+	(No symbol) [0x00EAD096]
+	(No symbol) [0x00E7C840]
+	(No symbol) [0x00E7D6A4]
+	GetHandleVerifier [0x01267043+2450739]
+	GetHandleVerifier [0x012627C6+2432182]
+	GetHandleVerifier [0x0127D50E+2542078]
+	GetHandleVerifier [0x01036895+155013]
+	GetHandleVerifier [0x0103CF7D+181357]
+	GetHandleVerifier [0x01027428+92440]
+	GetHandleVerifier [0x010275D0+92864]
+	GetHandleVerifier [0x01011FC0+5296]
+	BaseThreadInitThunk [0x7533FCC9+25]
+	RtlGetAppContainerNamedObjectPath [0x774A82AE+286]
+	RtlGetAppContainerNamedObjectPath [0x774A827E+238]
+
+[2025-05-03 10:19:50] ERROR [django.server:213] "GET /test/ HTTP/1.1" 500 140140
+[2025-05-03 10:21:52] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 10:22:15] ERROR [django.request:248] Internal Server Error: /test/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\views.py", line 16, in test
+    driver = advance_setup()
+             ^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\crawl.py", line 133, in advance_setup
+    driver = uc.Chrome(service=service, options=options)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\undetected_chromedriver\__init__.py", line 466, in __init__
+    super(Chrome, self).__init__(
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\chrome\webdriver.py", line 45, in __init__
+    super().__init__(
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\chromium\webdriver.py", line 67, in __init__
+    super().__init__(command_executor=executor, options=options)
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 260, in __init__
+    self.start_session(capabilities)
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\undetected_chromedriver\__init__.py", line 724, in start_session
+    super(selenium.webdriver.chrome.webdriver.WebDriver, self).start_session(
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 357, in start_session
+    response = self.execute(Command.NEW_SESSION, caps)["value"]
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 448, in execute
+    self.error_handler.check_response(response)
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.SessionNotCreatedException: Message: session not created: cannot connect to chrome at 127.0.0.1:40138
+from session not created: This version of ChromeDriver only supports Chrome version 136
+Current browser version is 135.0.7049.114
+Stacktrace:
+	GetHandleVerifier [0x00ABFBD3+61635]
+	GetHandleVerifier [0x00ABFC14+61700]
+	(No symbol) [0x008E05D3]
+	(No symbol) [0x0091A04B]
+	(No symbol) [0x00919069]
+	(No symbol) [0x0090F7AF]
+	(No symbol) [0x0090F5E6]
+	(No symbol) [0x00958DF3]
+	(No symbol) [0x0095880A]
+	(No symbol) [0x0094D096]
+	(No symbol) [0x0091C840]
+	(No symbol) [0x0091D6A4]
+	GetHandleVerifier [0x00D07043+2450739]
+	GetHandleVerifier [0x00D027C6+2432182]
+	GetHandleVerifier [0x00D1D50E+2542078]
+	GetHandleVerifier [0x00AD6895+155013]
+	GetHandleVerifier [0x00ADCF7D+181357]
+	GetHandleVerifier [0x00AC7428+92440]
+	GetHandleVerifier [0x00AC75D0+92864]
+	GetHandleVerifier [0x00AB1FC0+5296]
+	BaseThreadInitThunk [0x7533FCC9+25]
+	RtlGetAppContainerNamedObjectPath [0x774A82AE+286]
+	RtlGetAppContainerNamedObjectPath [0x774A827E+238]
+
+[2025-05-03 10:22:15] ERROR [django.server:213] "GET /test/ HTTP/1.1" 500 140011
+[2025-05-03 10:25:47] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 10:26:20] ERROR [django.request:248] Internal Server Error: /test/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\views.py", line 16, in test
+    driver = advance_setup()
+             ^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\crawl.py", line 133, in advance_setup
+    driver = uc.Chrome(service=service, options=options)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\undetected_chromedriver\__init__.py", line 466, in __init__
+    super(Chrome, self).__init__(
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\chrome\webdriver.py", line 45, in __init__
+    super().__init__(
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\chromium\webdriver.py", line 67, in __init__
+    super().__init__(command_executor=executor, options=options)
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 260, in __init__
+    self.start_session(capabilities)
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\undetected_chromedriver\__init__.py", line 724, in start_session
+    super(selenium.webdriver.chrome.webdriver.WebDriver, self).start_session(
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 357, in start_session
+    response = self.execute(Command.NEW_SESSION, caps)["value"]
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 448, in execute
+    self.error_handler.check_response(response)
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.SessionNotCreatedException: Message: session not created: cannot connect to chrome at 127.0.0.1:34496
+from session not created: This version of ChromeDriver only supports Chrome version 136
+Current browser version is 134.0.6998.35
+Stacktrace:
+	GetHandleVerifier [0x005DFBD3+61635]
+	GetHandleVerifier [0x005DFC14+61700]
+	(No symbol) [0x004005D3]
+	(No symbol) [0x0043A04B]
+	(No symbol) [0x00439069]
+	(No symbol) [0x0042F7AF]
+	(No symbol) [0x0042F5E6]
+	(No symbol) [0x00478DF3]
+	(No symbol) [0x0047880A]
+	(No symbol) [0x0046D096]
+	(No symbol) [0x0043C840]
+	(No symbol) [0x0043D6A4]
+	GetHandleVerifier [0x00827043+2450739]
+	GetHandleVerifier [0x008227C6+2432182]
+	GetHandleVerifier [0x0083D50E+2542078]
+	GetHandleVerifier [0x005F6895+155013]
+	GetHandleVerifier [0x005FCF7D+181357]
+	GetHandleVerifier [0x005E7428+92440]
+	GetHandleVerifier [0x005E75D0+92864]
+	GetHandleVerifier [0x005D1FC0+5296]
+	BaseThreadInitThunk [0x7533FCC9+25]
+	RtlGetAppContainerNamedObjectPath [0x774A82AE+286]
+	RtlGetAppContainerNamedObjectPath [0x774A827E+238]
+
+[2025-05-03 10:26:20] ERROR [django.server:213] "GET /test/ HTTP/1.1" 500 140003
+[2025-05-03 10:26:54] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 10:27:16] ERROR [django.request:248] Internal Server Error: /test/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\views.py", line 16, in test
+    driver = advance_setup()
+             ^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\crawl.py", line 150, in advance_setup
+    actions = HumanMouseMove.human_mouse_move(actions, (random.randint(0, 500), random.randint(0, 500)), (random.randint(0, 500), random.randint(0, 500)))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\methods.py", line 46, in human_mouse_move
+    speed_curve = HumanMouseMove.sigmoid_speed_curve(len(path) + 1)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\methods.py", line 27, in sigmoid_speed_curve
+    y = expit(x)  # خروجی تابع سیگموئید
+        ^^^^^
+NameError: name 'expit' is not defined
+[2025-05-03 10:27:16] ERROR [django.server:213] "GET /test/ HTTP/1.1" 500 86544
+[2025-05-03 10:28:20] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\methods.py changed, reloading.
+[2025-05-03 10:28:21] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 10:28:45] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\methods.py changed, reloading.
+[2025-05-03 10:28:46] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 10:30:21] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 10:36:56] INFO [django.server:213] "GET /test/ HTTP/1.1" 200 3
+[2025-05-03 11:10:50] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\crawl.py changed, reloading.
+[2025-05-03 11:10:52] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 13:20:06] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 13:50:20] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 13:50:57] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\views.py changed, reloading.
+[2025-05-03 13:50:58] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 13:51:27] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\views.py changed, reloading.
+[2025-05-03 13:51:28] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 13:52:23] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\views.py changed, reloading.
+[2025-05-03 13:52:24] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 13:54:56] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 13:55:58] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 15:37:08] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 15:44:35] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 15:47:00] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\views.py changed, reloading.
+[2025-05-03 15:47:01] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 15:47:10] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\views.py changed, reloading.
+[2025-05-03 15:47:11] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 15:47:58] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 15:48:23] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 15:49:04] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 15:52:13] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 15:53:20] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\views.py changed, reloading.
+[2025-05-03 15:53:21] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 15:53:49] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\views.py changed, reloading.
+[2025-05-03 15:53:49] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 15:55:00] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 15:55:23] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\views.py changed, reloading.
+[2025-05-03 15:55:24] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 15:55:41] ERROR [django.request:248] Internal Server Error: /test/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\views.py", line 33, in test
+    mongo_db.insert_one({'test': 'asdas'})
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\pymongo\synchronous\collection.py", line 422, in __call__
+    raise TypeError(
+TypeError: 'Collection' object is not callable. If you meant to call the 'insert_one' method on a 'Database' object it is failing because no such method exists.
+[2025-05-03 15:55:41] ERROR [django.server:213] "GET /test/ HTTP/1.1" 500 75618
+[2025-05-03 15:55:41] WARNING [django.request:248] Not Found: /favicon.ico
+[2025-05-03 15:55:41] WARNING [django.server:213] "GET /favicon.ico HTTP/1.1" 404 2801
+[2025-05-03 15:57:05] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\views.py changed, reloading.
+[2025-05-03 15:57:06] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 15:57:15] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\views.py changed, reloading.
+[2025-05-03 15:57:16] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 15:58:09] INFO [django.server:213] "GET /test/ HTTP/1.1" 200 3
+[2025-05-03 16:02:21] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\divar_crl\settings.py changed, reloading.
+[2025-05-03 16:02:23] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:02:27] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\divar_crl\settings.py changed, reloading.
+[2025-05-03 16:08:10] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:08:23] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\views.py changed, reloading.
+[2025-05-03 16:08:24] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:08:29] ERROR [django.request:248] Internal Server Error: /test/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\views.py", line 26, in test
+    get_mongo_db['test'].insert_one({'message': 'hi2'})
+    ~~~~~~~~~~~~^^^^^^^^
+TypeError: 'function' object is not subscriptable
+[2025-05-03 16:08:29] ERROR [django.server:213] "GET /test/ HTTP/1.1" 500 71675
+[2025-05-03 16:08:49] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:09:09] INFO [django.server:213] "GET /test/ HTTP/1.1" 200 3
+[2025-05-03 16:11:45] INFO [django.server:213] "GET /test/ HTTP/1.1" 200 3
+[2025-05-03 16:14:22] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\methods.py changed, reloading.
+[2025-05-03 16:14:24] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:17:33] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\crawl.py changed, reloading.
+[2025-05-03 16:17:33] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:17:52] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\crawl.py changed, reloading.
+[2025-05-03 16:17:53] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:17:58] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\crawl.py changed, reloading.
+[2025-05-03 16:17:59] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:19:15] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\crawl.py changed, reloading.
+[2025-05-03 16:19:16] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:20:35] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\crawl.py changed, reloading.
+[2025-05-03 16:20:36] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:23:11] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\crawl.py changed, reloading.
+[2025-05-03 16:23:12] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:26:35] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:27:16] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\urls.py changed, reloading.
+[2025-05-03 16:27:17] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:27:28] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\urls.py changed, reloading.
+[2025-05-03 16:27:29] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:28:56] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:28:59] INFO [django:45] logger working
+[2025-05-03 16:29:38] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\crawl.py changed, reloading.
+[2025-05-03 16:29:39] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:29:40] INFO [django:45] logger working
+[2025-05-03 16:30:43] ERROR [django.request:248] Internal Server Error: /crawl/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\urllib3\connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\urllib3\connectionpool.py", line 534, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\urllib3\connection.py", line 516, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python311\Lib\http\client.py", line 1395, in getresponse
+    response.begin()
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python311\Lib\http\client.py", line 325, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python311\Lib\http\client.py", line 286, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python311\Lib\socket.py", line 706, in readinto
+    return self._sock.recv_into(b)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\views.py", line 47, in crawl_view
+    files, errors = crawl_files(location_to_search, 2)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\crawl.py", line 386, in crawl_files
+    driver = advance_setup()
+             ^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\crawl.py", line 158, in advance_setup
+    driver.maximize_window()
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 641, in maximize_window
+    self.execute(command, None)
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 446, in execute
+    response = self.command_executor.execute(driver_command, params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\remote_connection.py", line 404, in execute
+    return self._request(command_info[0], url, body=data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\remote_connection.py", line 428, in _request
+    response = self._conn.request(method, url, body=body, headers=headers, timeout=self._client_config.timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\urllib3\_request_methods.py", line 143, in request
+    return self.request_encode_body(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\urllib3\_request_methods.py", line 278, in request_encode_body
+    return self.urlopen(method, url, **extra_kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\urllib3\poolmanager.py", line 443, in urlopen
+    response = conn.urlopen(method, u.request_uri, **kw)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\urllib3\connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\urllib3\util\retry.py", line 474, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\urllib3\util\util.py", line 38, in reraise
+    raise value.with_traceback(tb)
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\urllib3\connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\urllib3\connectionpool.py", line 534, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\urllib3\connection.py", line 516, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python311\Lib\http\client.py", line 1395, in getresponse
+    response.begin()
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python311\Lib\http\client.py", line 325, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python311\Lib\http\client.py", line 286, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python311\Lib\socket.py", line 706, in readinto
+    return self._sock.recv_into(b)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.ProtocolError: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+[2025-05-03 16:30:43] ERROR [django.server:213] "GET /crawl/ HTTP/1.1" 500 205753
+[2025-05-03 16:45:23] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:45:37] INFO [django:45] logger working
+[2025-05-03 16:46:01] ERROR [django.request:248] Internal Server Error: /crawl/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\rest_framework\response.py", line 59, in rendered_content
+    assert renderer, ".accepted_renderer not set on Response"
+           ^^^^^^^^
+AssertionError: .accepted_renderer not set on Response
+[2025-05-03 16:46:01] ERROR [django.server:213] "GET /crawl/ HTTP/1.1" 500 76199
+[2025-05-03 16:47:35] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\crawl.py changed, reloading.
+[2025-05-03 16:47:37] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:47:42] INFO [django:45] logger working
+[2025-05-03 16:47:51] ERROR [django.request:248] Internal Server Error: /crawl/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\views.py", line 47, in crawl_view
+    files, errors = crawl_files(location_to_search, 2)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\crawl.py", line 382, in crawl_files
+    driver = advance_setup()
+             ^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\crawl.py", line 154, in advance_setup
+    driver.maximize_window()
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 641, in maximize_window
+    self.execute(command, None)
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 448, in execute
+    self.error_handler.check_response(response)
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.WebDriverException: Message: unknown error: JavaScript code failed
+from unknown command: 'Runtime.evaluate' wasn't found
+  (Session info: chrome=136.0.7103.49)
+Stacktrace:
+	GetHandleVerifier [0x011DFBD3+61635]
+	GetHandleVerifier [0x011DFC14+61700]
+	(No symbol) [0x010005D3]
+	(No symbol) [0x00FF0710]
+	(No symbol) [0x00FEF0D5]
+	(No symbol) [0x00FEF93D]
+	(No symbol) [0x010127DA]
+	(No symbol) [0x01008CCD]
+	(No symbol) [0x01008BF2]
+	(No symbol) [0x00FE288E]
+	(No symbol) [0x00FE0B5F]
+	(No symbol) [0x010A19C8]
+	(No symbol) [0x0106D29C]
+	(No symbol) [0x0108E61B]
+	(No symbol) [0x0106D096]
+	(No symbol) [0x0103C840]
+	(No symbol) [0x0103D6A4]
+	GetHandleVerifier [0x01427043+2450739]
+	GetHandleVerifier [0x014227C6+2432182]
+	GetHandleVerifier [0x0143D50E+2542078]
+	GetHandleVerifier [0x011F6895+155013]
+	GetHandleVerifier [0x011FCF7D+181357]
+	GetHandleVerifier [0x011E7428+92440]
+	GetHandleVerifier [0x011E75D0+92864]
+	GetHandleVerifier [0x011D1FC0+5296]
+	BaseThreadInitThunk [0x75FDFCC9+25]
+	RtlGetAppContainerNamedObjectPath [0x779782AE+286]
+	RtlGetAppContainerNamedObjectPath [0x7797827E+238]
+
+[2025-05-03 16:47:51] ERROR [django.server:213] "GET /crawl/ HTTP/1.1" 500 109581
+[2025-05-03 16:48:41] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\crawl.py changed, reloading.
+[2025-05-03 16:48:43] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:49:20] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\views.py changed, reloading.
+[2025-05-03 16:49:22] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:49:27] INFO [django:46] logger working
+[2025-05-03 16:50:15] ERROR [django.request:248] Internal Server Error: /crawl/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\rest_framework\response.py", line 59, in rendered_content
+    assert renderer, ".accepted_renderer not set on Response"
+           ^^^^^^^^
+AssertionError: .accepted_renderer not set on Response
+[2025-05-03 16:50:15] ERROR [django.server:213] "GET /crawl/ HTTP/1.1" 500 76050
+[2025-05-03 16:53:55] INFO [django.utils.autoreload:265] C:\10\xa\divar_crl\main\crawl.py changed, reloading.
+[2025-05-03 16:53:57] INFO [django.utils.autoreload:667] Watching for file changes with StatReloader
+[2025-05-03 16:54:23] INFO [django:46] logger working
+[2025-05-03 16:54:58] ERROR [django.request:248] Internal Server Error: /crawl/
+Traceback (most recent call last):
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\views.py", line 48, in crawl_view
+    files, errors = crawl_files(location_to_search, 2)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\10\xa\divar_crl\main\crawl.py", line 447, in crawl_files
+    raise e
+  File "C:\10\xa\divar_crl\main\crawl.py", line 425, in crawl_files
+    new_height = driver.execute_script("return document.body.scrollHeight")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 547, in execute_script
+    return self.execute(command, {"script": script, "args": converted_args})["value"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 448, in execute
+    self.error_handler.check_response(response)
+  File "C:\Users\Admin\Envs\venv\Lib\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.InvalidSessionIdException: Message: invalid session id: session deleted as the browser has closed the connection
+from disconnected: not connected to DevTools
+  (Session info: chrome=136.0.7103.49)
+Stacktrace:
+	GetHandleVerifier [0x0096FBD3+61635]
+	GetHandleVerifier [0x0096FC14+61700]
+	(No symbol) [0x007905D3]
+	(No symbol) [0x0077FE20]
+	(No symbol) [0x0079DD1F]
+	(No symbol) [0x00803E8C]
+	(No symbol) [0x0081DF19]
+	(No symbol) [0x007FD096]
+	(No symbol) [0x007CC840]
+	(No symbol) [0x007CD6A4]
+	GetHandleVerifier [0x00BB7043+2450739]
+	GetHandleVerifier [0x00BB27C6+2432182]
+	GetHandleVerifier [0x00BCD50E+2542078]
+	GetHandleVerifier [0x00986895+155013]
+	GetHandleVerifier [0x0098CF7D+181357]
+	GetHandleVerifier [0x00977428+92440]
+	GetHandleVerifier [0x009775D0+92864]
+	GetHandleVerifier [0x00961FC0+5296]
+	BaseThreadInitThunk [0x75FDFCC9+25]
+	RtlGetAppContainerNamedObjectPath [0x779782AE+286]
+	RtlGetAppContainerNamedObjectPath [0x7797827E+238]
+
+[2025-05-03 16:54:58] ERROR [django.server:213] "GET /crawl/ HTTP/1.1" 500 110499

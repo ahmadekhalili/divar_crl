@@ -1,0 +1,12 @@
+https://www.mongodb.com/try/download/community
+https://www.mongodb.com/try/download/shell
+net start MongoDB
+
+
+mongo
+> use admin
+db.createUser({
+    user:   "akh",
+    pwd:    "a13431343",
+    roles: [ { role: "readWrite", db: "divar" } ]
+  })
