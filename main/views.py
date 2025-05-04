@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.http import HttpResponse
 
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -42,22 +43,29 @@ def test(request):
     return HttpResponse('asd')
 
 
-def crawl_view(request):
-    logger.info(f"logger working")
-    location_to_search = 'کیانشهر'  # request.data['location_to_search']  # like 'کیانشهر'
-    files, errors = crawl_files(location_to_search, 2)
-    unique_titles, unique_files = [], []
-    for file in files:  # field unique validation only done when save file singular (so we have to validate here)
-        if file['title'] not in unique_titles:
-            cleaned_file = {key: value for key, value in file.items() if value is not None}
-            unique_titles.append(cleaned_file['title'])
-            unique_files.append(cleaned_file)
-    if unique_titles:
-        s = FileMongoSerializer(data=unique_files, request=request, many=True)
-        if s.is_valid():
-            files = s.save()
-            return Response({'files_saved': files, 'files_failed': errors})
-        else:
-            return Response(s.errors)
-    else:
-        return Response({'files_failed': errors})
+class CrawlView(APIView):
+    def get(self, request):
+        logger.info(f"logger working")
+        location_to_search = 'کیانشهر'  # request.data['location_to_search']  # like 'کیانشهر'
+        files, errors = crawl_files(location_to_search, 2)
+        unique_titles, unique_files = [], []
+        for file in files:  # field unique validation only done when save file singular (so we have to validate here)
+            if file['title'] not in unique_titles:
+                cleaned_file = {key: value for key, value in file.items() if value is not None}
+                unique_titles.append(cleaned_file['title'])
+                unique_files.append(cleaned_file)
+        try:
+            if unique_titles:
+                s = FileMongoSerializer(data=unique_files, request=request, many=True)
+                if s.is_valid():
+                    logger.info(f"for is valid")
+                    files = s.save()
+                    return Response({'files_saved': files, 'files_failed': errors})
+                else:
+                    logger.error(f"for is not valid, error: {s.errors}")
+                    return Response(s.errors)
+            else:
+                logger.info(f"there isn't any unique titles.")
+                return Response({'files_failed': errors})
+        except Exception as e:
+            return Response(f"Unexpected exception: {e}")

@@ -365,16 +365,21 @@ class CrawlModules:
             except StaleElementReferenceException:
                 logger.error(f"The DOM updated—retry locating")
                 if attempt == retries:
-                    raise
+                    raise  # Re-raise the last exception if retries exhausted
             except ElementClickInterceptedException:
-                logger.error(f"Something’s overlaying it. try JS fallback")
-                self.driver.execute_script("arguments[0].click();", btn)
-                logger.info(f"map closed by js fallback")
-                return
+                try:
+                    logger.error(f"Something’s overlaying it. try JS fallback")
+                    self.driver.execute_script("arguments[0].click();", btn)
+                    logger.info(f"map closed by js fallback")
+                    return
+                except:
+                    logger.error(f"Could not click the button by js")
+                    raise  # Re-raise the last exception if retries exhausted
             except TimeoutException:
                 logger.error(f"Didn’t become clickable in time")
                 if attempt == retries:
                     logger.error(f"Could not click the button after {retries} attempts")
+                    raise  # Re-raise the last exception if retries exhausted
             # short pause before retry
             time.sleep(1)
 
@@ -387,7 +392,11 @@ def crawl_files(location_to_search, max_files=None):
     driver.get(url)     # Load the web page
     crawl_modules = CrawlModules(driver)
 
-    crawl_modules.close_map()
+    try:
+        crawl_modules.close_map()
+    except Exception as e:
+        logger.error(f"{e}")       # skip closing if failed
+
     try:
         # search box
         search_input = WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.CSS_SELECTOR, 'input.kt-nav-text-field__input')))
@@ -401,7 +410,11 @@ def crawl_files(location_to_search, max_files=None):
         # Scroll down and add all founded card to 'cards'
         cards = []       # using set() make unordered of cards
         while True:
-            cards_on_screen = driver.find_elements(By.CSS_SELECTOR, 'article.kt-post-card')
+            try:
+                cards_on_screen = driver.find_elements(By.CSS_SELECTOR, 'article.kt-post-card')
+            except Exception as e:
+                logger.error(f"Fails getting cards via article.kt-post-card element. error: {e}")
+                cards_on_screen = []
             for card in cards_on_screen:
                 try:
                     title_elements = card.find_elements(By.CSS_SELECTOR, '.kt-post-card__title')  # Find title of card
@@ -416,17 +429,21 @@ def crawl_files(location_to_search, max_files=None):
                     else:                   # some carts are blank, required to skip them
                         pass
                 except Exception as e:
-                    print(f"Could not retrieve title for card: {e}")
+                    logger.error(f"Could not retrieve title for card: {e}")
 
-            # Scroll down to the bottom of the page
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(1)  # Wait for the page to load new cards
-            # Get the new scroll height and compare with the last scroll height
-            new_height = driver.execute_script("return document.body.scrollHeight")
-            # If the scroll height hasn't changed, we've reached end of scroll
-            if new_height == last_height:
-                break
-            last_height = new_height
+            if max_files > 10:
+                # Scroll down to the bottom of the page
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(1)  # Wait for the page to load new cards
+                # Get the new scroll height and compare with the last scroll height
+                new_height = driver.execute_script("return document.body.scrollHeight")
+                # If the scroll height hasn't changed, we've reached end of scroll
+                if new_height == last_height:
+                    break
+                last_height = new_height
+            else:
+                break   # skip scroll and exit while loop
+
 
         files, errors = [], {}    # if some files not crawled, trace them in error list
         for card_url in cards:

@@ -5,6 +5,6 @@ app_name = "main"
 
 urlpatterns = [
     path("test/", views.test, name="test"),
-    path("crawl/", views.crawl_view, name="crawl_view"),
+    path("crawl/", views.CrawlView.as_view(), name="crawl_view"),
 
 ]

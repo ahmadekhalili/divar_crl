@@ -29,89 +29,26 @@ class FileMongoSerializer(serializers.Serializer):
     """
 
     # ─── Numeric / Scalar fields ──────────────────────────────────────────────
-    phone = serializers.IntegerField(
-        required=False,
-        allow_null=True,
-        help_text="Phone number, as an integer (None if unavailable)."
-    )
-    title = serializers.CharField(
-        max_length=255,
-        help_text="Listing title extracted from the page."
-    )
-    metraj = serializers.CharField(
-        max_length=50,
-        required=False,
-        allow_blank=True,
-        help_text="متراژ (area), e.g. '75 متر'."
-    )
-    age = serializers.CharField(
-        max_length=50,
-        required=False,
-        allow_blank=True,
-        help_text="سن بنا (age), e.g. '5 سال'."
-    )
-    otagh = serializers.CharField(
-        max_length=50,
-        required=False,
-        allow_blank=True,
-        help_text="تعداد اتاق (rooms), e.g. '2'."
-    )
-    total_price = serializers.CharField(
-        max_length=100,
-        required=False,
-        allow_blank=True,
-        help_text="قیمت کل, e.g. '۳,۰۰۰,۰۰۰,۰۰۰ تومان'."
-    )
-    price_per_meter = serializers.CharField(
-        max_length=100,
-        required=False,
-        allow_blank=True,
-        help_text="قیمت هر متر."
-    )
-    floor_number = serializers.CharField(
-        max_length=50,
-        required=False,
-        allow_blank=True,
-        help_text="شماره طبقه."
-    )
+    phone = serializers.IntegerField(required=False, allow_null=True, help_text="Phone number, as an integer (None if unavailable).")
+    title = serializers.CharField(max_length=255, help_text="Listing title extracted from the page.")
+    metraj = serializers.CharField(max_length=50, required=False, allow_blank=True, help_text="متراژ (area), e.g. '75 متر'.")
+    age = serializers.CharField(max_length=50, required=False, allow_blank=True, help_text="سن بنا (age), e.g. '5 سال'.")
+    otagh = serializers.CharField(max_length=50, required=False, allow_blank=True, help_text="تعداد اتاق (rooms), e.g. '2'.")
+    total_price = serializers.CharField(max_length=100, required=False, allow_blank=True, help_text="قیمت کل, e.g. '۳,۰۰۰,۰۰۰,۰۰۰ تومان'.")
+    price_per_meter = serializers.CharField(max_length=100, required=False, allow_blank=True, help_text="قیمت هر متر.")
+    floor_number = serializers.CharField(max_length=50, required=False, allow_blank=True, help_text="شماره طبقه.")
 
     # ─── Collections ──────────────────────────────────────────────────────────
-    general_features = serializers.ListField(
-        child=serializers.CharField(),
-        required=False,
-        default=list,
-        help_text="List of basic features (e.g. پارکینگ, آسانسور…)."
-    )
-    features = serializers.ListField(
-        child=serializers.CharField(),
-        required=False,
-        default=list,
-        help_text="Full list of 'امکانات' from the modal."
-    )
-    image_srcs = serializers.ListField(
-        child=serializers.URLField(),
-        required=False,
-        default=list,
-        help_text="All image URLs gathered from the gallery."
-    )
+    general_features = serializers.ListField(child=serializers.CharField(), required=False, default=list, help_text="List of basic features (e.g. پارکینگ, آسانسور…).")
+    features = serializers.ListField(child=serializers.CharField(), required=False, default=list, help_text="Full list of 'امکانات' from the modal.")
+    image_srcs = serializers.ListField(child=serializers.URLField(), required=False, default=list, help_text="All image URLs gathered from the gallery.")
 
     # ─── Complex / JSON ───────────────────────────────────────────────────────
-    specs = serializers.DictField(
-        child=serializers.CharField(),
-        required=False,
-        default=dict,
-        help_text="Key/value specs from the 'نمایش همهٔ جزئیات' modal."
-    )
+    specs = serializers.DictField(child=serializers.CharField(), required=False, default=dict, help_text="Key/value specs from the 'نمایش همهٔ جزئیات' modal.")
 
     # ─── Free-text / URLs ──────────────────────────────────────────────────────
-    description = serializers.CharField(
-        required=False,
-        allow_blank=True,
-        help_text="Cleaned description text."
-    )
-    url = serializers.URLField(
-        help_text="Original listing URL."
-    )
+    description = serializers.CharField(required=False, allow_blank=True, help_text="Cleaned description text.")
+    url = serializers.URLField(help_text="Original listing URL.")
 
     def validate_phone(self, value):
         """
