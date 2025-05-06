@@ -10,9 +10,10 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 import logging
 
-from .crawl import setup, advance_setup, crawl_files
+from .crawl import crawl_files
 from .serializers import FileMongoSerializer
 from .mongo_client import get_mongo_db, ConnectionFailure
+from .crawl_setup import advance_setup, setup
 
 logger = logging.getLogger('django')
 
@@ -27,7 +28,7 @@ environ.Env.read_env(os.path.join(Path(__file__).resolve().parent.parent.parent,
 
 
 def test(request):
-    get_mongo_db()['test'].insert_one({'message': 'hi2'})
+    #get_mongo_db()['test'].insert_one({'message': 'hi2'})
     url = "https://divar.ir/s/tehran/buy-apartment"
     driver = advance_setup()
     driver.get(url)  # Load the web page
@@ -47,7 +48,7 @@ class CrawlView(APIView):
     def get(self, request):
         logger.info(f"logger working")
         location_to_search = 'کیانشهر'  # request.data['location_to_search']  # like 'کیانشهر'
-        files, errors = crawl_files(location_to_search, 2)
+        files, errors = crawl_files(location_to_search, 1)
         unique_titles, unique_files = [], []
         for file in files:  # field unique validation only done when save file singular (so we have to validate here)
             if file['title'] not in unique_titles:
@@ -56,7 +57,7 @@ class CrawlView(APIView):
                 unique_files.append(cleaned_file)
         try:
             if unique_titles:
-                s = FileMongoSerializer(data=unique_files, request=request, many=True)
+                s = FileMongoSerializer(data=unique_files, many=True)
                 if s.is_valid():
                     logger.info(f"for is valid")
                     files = s.save()

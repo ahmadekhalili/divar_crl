@@ -89,6 +89,10 @@ LOGGING = {
             'format': '[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s',
             'datefmt': '%Y-%m-%d %H:%M:%S',
         },
+        'indented': {  # additional space in first ('  ')
+            'format': '  [%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
         'simple': {
             'format': '%(levelname)s %(message)s',
         },
@@ -110,9 +114,20 @@ LOGGING = {
             'formatter': 'verbose',
             'encoding': 'utf-8',
         },
+        'file_file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'web.log'),
+            'formatter': 'indented',
+            'encoding': 'utf-8',
+        },
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
+        },
+        'console_file': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'indented',
         },
     },
     'loggers': {
@@ -125,7 +140,12 @@ LOGGING = {
         # Logger for web logging: use this when you explicitly call logging.getLogger('web')
         'web': {
             'handlers': ['web_file', 'console'],
-            'level': 'DEBUG',
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'file': {     # show logs when crawl inside a file (shows with additional '  ' space)
+            'handlers': ['file_file', 'console_file'],
+            'level': 'INFO',
             'propagate': False,
         },
     },

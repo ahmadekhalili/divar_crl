@@ -17,7 +17,7 @@ def get_mongo_client():
         try:
             uri = settings.MONGO_URI # Use the URI constructed in settings.py
             logger.info(f"Connecting to MongoDB using URI: {settings.MONGO_HOST}:{settings.MONGO_PORT}...") # Avoid logging full URI with creds
-            _mongo_client = pymongo.MongoClient(uri, serverSelectionTimeoutMS=5000) # Add timeout
+            _mongo_client = pymongo.MongoClient(uri, serverSelectionTimeoutMS=5000)  # Add timeout
 
             # The ismaster command is cheap and does not require auth.
             _mongo_client.admin.command('ismaster')
