@@ -113,13 +113,7 @@ class RunModules:        # run a task (for example close map, go next image, ...
             return False, f"Timeout waiting for the 'تصویر بعدی' button to be clickable within 10 seconds."
         except NoSuchElementException:
             logger_file.error("The 'تصویر بعدی' button element was not found on the page.")
-            try:
-                pre_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@aria-label='تصویر قبلی']")))
-                if pre_button:
-                    logger_file.error("reached end of images")
-                    return True, 'end of image'
-            except:
-                return False, "The 'تصویر بعدی' button element was not found on the page."
+            return False, "The 'تصویر بعدی' button element was not found on the page."
         except ElementClickInterceptedException:
             logger_file.error("Click intercepted: Another element is covering the 'تصویر بعدی' button.")
             # In a real-world scenario, you might add additional logic here to handle
@@ -132,6 +126,17 @@ class RunModules:        # run a task (for example close map, go next image, ...
             message = f"An unexpected error occurred hitting next image button: {e}"
             logger_file.error(message)
             return False, message
+
+    def check_end_of_gallery(self):  # check there isnt any next button to get next image
+        wait = WebDriverWait(self.driver, 10)
+        try:
+            wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@aria-label='تصویر بعدی']")))
+        except:
+            pre_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@aria-label='تصویر قبلی']")))
+            if pre_button:
+                logger_file.error("reached end of images")
+                return True, ''         # end of the gallery
+        return False, ''
 
 
 class GetElement:    # get specefic element and return its value
@@ -150,6 +155,9 @@ class GetElement:    # get specefic element and return its value
         except:  # if it's not prodived phone number, set None
             phone_number = None
         return phone_number
+
+
+
 
 
 class FileCrawl:
@@ -226,9 +234,11 @@ class FileCrawl:
         run_tasks = RunModules(driver)
         image_srcs = set()
         image_success, image_counts= 0, -1  # -1 because always one time finding of next image image ('<') fails after reaching galary's end
-        for i in range(50):       # can crawl max 50 images, dont use while loop for safty
+        for i in range(50):       # can crawl max 50 images, dont use while loop for safety
             bool_message = run_tasks.next_image()
-            time.sleep(1)
+            end_of_gallery = run_tasks.check_end_of_gallery()    # check there isnt any next button to get next image
+            time.sleep(1)     # just for test trace
+            logger_file.info(f"file {i+1} {bool_message[0]}, end_of_gallery: {end_of_gallery}")
 
             try:
                 image_counts += 1
@@ -236,19 +246,19 @@ class FileCrawl:
                 image_element = WebDriverWait(driver, 10).until(
                     EC.visibility_of_element_located((By.CSS_SELECTOR, 'img.kt-image-block__image'))
                 )
-
-                if bool_message[0] and bool_message[1] == 'end of image':
-                    return
-                # Get the src attribute
-                image_url = image_element.get_attribute('src')
-                if image_url:
-                    image_success += 1
-                    image_srcs.add(image_url)
-                logger_file.info(f"image_element found but image_url is blank")
-
             except Exception as e:
-                logger_file.error(f"An error occurred getting image url: {e}")
+                logger_file.error(f"An error occurred getting image_element. error: {e}")
                 return  # reach end of galary or just exist from while loop
+
+            if end_of_gallery:
+                return
+            # Get the src attribute
+            image_url = image_element.get_attribute('src')
+            if image_url:
+                image_success += 1
+                image_srcs.add(image_url)
+            logger_file.info(f"image_element found but image_url is blank")
+
         # in mismatch maybe duplicates or fails
         logger_file.info(f"crawled images: {image_success}/image_counts.")
         self.file['image_srcs'] = image_srcs

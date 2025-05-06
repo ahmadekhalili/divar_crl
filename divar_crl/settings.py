@@ -81,6 +81,12 @@ REST_FRAMEWORK = {
 
 WSGI_APPLICATION = 'divar_crl.wsgi.application'
 
+# crate required log files and folder if not exists
+LOG_DIR = Path(BASE_DIR) / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+for fn in ("django.log", "web.log", "file.log"):
+    (LOG_DIR / fn).touch(exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
