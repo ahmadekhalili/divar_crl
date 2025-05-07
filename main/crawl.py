@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.files import File
 
+from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -140,8 +141,9 @@ class RunModules:        # run a task (for example close map, go next image, ...
 
 
 class GetElement:    # get specefic element and return its value
-    def __init__(self, driver):
+    def __init__(self, driver, retry=1):
         self.driver = driver
+        self.retry = retry
 
     def get_phone(self):
         phone_button = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
@@ -156,9 +158,34 @@ class GetElement:    # get specefic element and return its value
             phone_number = None
         return phone_number
 
+    def get_image(self):
+        image_element = None
+        for i in range(self.retry):
+            logger_file.info(f"retry {i+1}:")
+            selector = 'img.kt-image-block__image'  # The CSS selector for the image
+            driver = self.driver
 
+            try:
+                logger_file.info(f"Attempting to check for presence of element: {selector}")
+                # Wait for the element to be present in the DOM
+                image_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+                logger_file.info(f"Element is PRESENT in the DOM: {selector}")
+                return image_element
 
-
+            except TimeoutException:
+                logger_file.warning(f"Timeout waiting for visibility of element: {selector}. The element might not be present or visible.")
+                # Now wait for visibility again after scrolling
+                logger_file.info(f"Waiting for visibility after scrolling: {selector}")
+                image_element = WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.CSS_SELECTOR, selector)))
+                # Attempt to scroll the element into view
+                logger_file.info(f"Attempting to scroll element into view: {selector}")
+                driver.execute_script("arguments[0].scrollIntoView(true);", image_element)
+                image_element = WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.CSS_SELECTOR, selector)))
+                logger_file.info(f"Successfully found and element is visible after scrolling: {selector}")
+                return image_element
+            except:
+                logger_file.warning(f"failed getting image element totally")
+        return image_element
 
 class FileCrawl:
     def __init__(self):
@@ -232,35 +259,36 @@ class FileCrawl:
             logger.error(f"can't click on initial button to open the gallery. error: {e}")
         '''
         run_tasks = RunModules(driver)
+        get_element = GetElement(driver, 2)
         image_srcs = set()
-        image_success, image_counts= 0, -1  # -1 because always one time finding of next image image ('<') fails after reaching galary's end
+        image_success, image_counts = 0, 0  # -1 because always one time finding of next image image ('<') fails after reaching galary's end
         for i in range(50):       # can crawl max 50 images, dont use while loop for safety
-            bool_message = run_tasks.next_image()
-            end_of_gallery = run_tasks.check_end_of_gallery()    # check there isnt any next button to get next image
-            time.sleep(1)     # just for test trace
-            logger_file.info(f"file {i+1} {bool_message[0]}, end_of_gallery: {end_of_gallery}")
+            image_counts += 1
+            image_element = get_element.get_image()
 
-            try:
-                image_counts += 1
-                # Wait for the image element to be visible (adjust locator and timeout as needed)
-                image_element = WebDriverWait(driver, 10).until(
-                    EC.visibility_of_element_located((By.CSS_SELECTOR, 'img.kt-image-block__image'))
-                )
-            except Exception as e:
-                logger_file.error(f"An error occurred getting image_element. error: {e}")
-                return  # reach end of galary or just exist from while loop
-
-            if end_of_gallery:
-                return
             # Get the src attribute
-            image_url = image_element.get_attribute('src')
-            if image_url:
-                image_success += 1
-                image_srcs.add(image_url)
-            logger_file.info(f"image_element found but image_url is blank")
+            try:
+                image_url = image_element.get_attribute('src')
+                if image_url:
+                    image_success += 1
+                    image_srcs.add(image_url)
+                else:
+                    logger_file.info(f"image src is blank (while element founded)")
+            except Exception as e:
+                logger_file.error(f"erorr raise getting image's src. error: {e}")
+
+            next_image = run_tasks.next_image()
+            time.sleep(1)     # just for test trace
+            # end_of_gallery = run_tasks.check_end_of_gallery()  # check there isnt any next button to get next image
+            logger_file.info(f"--image {i+1} {next_image[0]}")
+
+
+            if not next_image[0]:
+                logger_file.info(f"next_image icon not found, reached end of images")
+                break
 
         # in mismatch maybe duplicates or fails
-        logger_file.info(f"crawled images: {image_success}/image_counts.")
+        logger_file.info(f"crawled images: {image_success}/{image_counts}.")
         self.file['image_srcs'] = image_srcs
 
     def crawl_extra_data(self, driver):  # opens "نمایش همهٔ جزئیات" button and crawl all information
@@ -379,7 +407,7 @@ def crawl_files(location_to_search, max_files=None):
                 else:                   # some carts are blank, required to skip them
                     pass
 
-            if max_files > 10:
+            if max_files > 11:
                 # Scroll down to the bottom of the page
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                 time.sleep(1)  # Wait for the page to load new cards
@@ -400,8 +428,8 @@ def crawl_files(location_to_search, max_files=None):
             time.sleep(2)
             file_crawl = FileCrawl()
             try:
+                file_crawl.file['url'] = card_url  # save url before crawl others
                 file_crawl.crawl_file(driver)  # fills .file
-                file_crawl.file['url'] = card_url
             except Exception as e:
                 errors['cart_url'] = str(e)
             files.append(file_crawl.file)

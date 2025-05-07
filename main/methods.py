@@ -1,7 +1,13 @@
 import numpy as np
 import random
 import time
+import os
 from scipy.special import expit
+from pymongo import ReturnDocument
+import requests
+
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 
 
 class HumanMouseMove:
@@ -57,3 +63,24 @@ class HumanMouseMove:
             if random.random() < 0.05:
                 time.sleep(random.uniform(0.05, 0.2))
         return actions
+
+
+def get_next_sequence(mongodb, name):  # return a numberlike: 13 and increase it in db (next return: 14 for that name)
+    return mongodb.counters.find_one_and_update(   # Go to the "counters" collection and find and update a document
+        {'_id': name},                         # Condition: the document whose _id matches the given name (e.g., "my_model")
+        {'$inc': {'seq': 1}},                  # Increment the "seq" field by 1
+        return_document=ReturnDocument.AFTER, # Return the updated document (after increment)
+        upsert=True                            # If it doesn’t exist, create it
+    )['seq']                                   # Just return the "seq" value from the document
+
+
+def upload_and_get_image_path(url, file_number):   # upload the image full url to example: /media/file_images/file 1
+    folder = 'file_images'
+    sub_folder = f"file {file_number}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        filename = os.path.basename(url.split('?')[0])  # حذف query params
+        path = os.path.join(folder, sub_folder, filename)
+        saved_path = default_storage.save(path, ContentFile(response.content))
+        return path
+    return None

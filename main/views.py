@@ -14,6 +14,7 @@ from .crawl import crawl_files
 from .serializers import FileMongoSerializer
 from .mongo_client import get_mongo_db, ConnectionFailure
 from .crawl_setup import advance_setup, setup
+from .methods import get_next_sequence
 
 logger = logging.getLogger('django')
 
@@ -30,18 +31,10 @@ environ.Env.read_env(os.path.join(Path(__file__).resolve().parent.parent.parent,
 def test(request):
     #get_mongo_db()['test'].insert_one({'message': 'hi2'})
     url = "https://divar.ir/s/tehran/buy-apartment"
-    driver = advance_setup()
-    driver.get(url)  # Load the web page
-    time.sleep(2)
-
-    # add location 'tehran' to the site
-    cookies = [{"name": "city", "value": "tehran", "domain": ".divar.ir"},
-               {"name": "multi-city", "value": "tehran%7C", "domain": ".divar.ir"}]
-    for cookie in cookies:
-        driver.add_cookie(cookie)
-    driver.refresh()
-    logger.info(f"driver refreshed (for cookie)")
-    return HttpResponse('asd')
+    #driver = advance_setup()
+    #driver.get(url)  # Load the web page
+    #num = get_next_sequence(get_mongo_db(), 'test')
+    return HttpResponse(f"{num}")
 
 
 class CrawlView(APIView):
@@ -57,6 +50,7 @@ class CrawlView(APIView):
                 unique_files.append(cleaned_file)
         try:
             if unique_titles:
+                logger.info(f"--all crawled files: {len(unique_titles)}, duplicates: {len(files)-len(unique_titles)}")
                 s = FileMongoSerializer(data=unique_files, many=True)
                 if s.is_valid():
                     logger.info(f"for is valid")

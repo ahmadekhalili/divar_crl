@@ -5,11 +5,15 @@ from urllib.parse import quote_plus
 import pymongo
 import os
 import environ
+import logging
 
+from .methods import upload_and_get_image_path, get_next_sequence
 from .mongo_client import get_mongo_db, ConnectionFailure
 
 env = environ.Env()
 environ.Env.read_env(os.path.join(Path(__file__).resolve().parent.parent.parent, '.env'))
+logger = logging.getLogger('web')
+logger_file = logging.getLogger('file')
 
 
 class CreateListSerializer(serializers.ListSerializer):
@@ -42,11 +46,12 @@ class FileMongoSerializer(serializers.Serializer):
     general_features = serializers.ListField(child=serializers.CharField(), required=False, default=list, help_text="List of basic features (e.g. پارکینگ, آسانسور…).")
     features = serializers.ListField(child=serializers.CharField(), required=False, default=list, help_text="Full list of 'امکانات' from the modal.")
     image_srcs = serializers.ListField(child=serializers.URLField(), required=False, default=list, help_text="All image URLs gathered from the gallery.")
+    image_paths = serializers.ListField(child=serializers.URLField(), required=False, default=list, help_text="All uploaded image paths gathered from the gallery.")
 
     # ─── Complex / JSON ───────────────────────────────────────────────────────
     specs = serializers.DictField(child=serializers.CharField(), required=False, default=dict, help_text="Key/value specs from the 'نمایش همهٔ جزئیات' modal.")
 
-    # ─── Free-text / URLs ──────────────────────────────────────────────────────
+    # ─── Free-text / URLs ─────────────────────────────────────────────────────
     description = serializers.CharField(required=False, allow_blank=True, help_text="Cleaned description text.")
     url = serializers.URLField(help_text="Original listing URL.")
 
@@ -59,6 +64,15 @@ class FileMongoSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
+        logger_file.info(f"data.get('image_srcs'): {len(data.get('image_srcs'))}, like: {data.get('image_srcs')[0]}")
+        if data.get('image_srcs'):  # upload the image (from url) and return the image path
+            image_paths = []
+            for url in data.get('image_srcs'):
+                path = upload_and_get_image_path(url, get_next_sequence(get_mongo_db(), 'file'))
+                if path:
+                    image_paths.append(path)
+            data['image_paths'] = image_paths
+
         return data
         if data.get('total_price') and not data.get('price_per_meter'):
             raise serializers.ValidationError({
