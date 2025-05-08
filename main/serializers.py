@@ -2,12 +2,13 @@ from rest_framework import serializers
 
 from pathlib import Path
 from urllib.parse import quote_plus
+from pymongo import ReturnDocument
 import pymongo
 import os
 import environ
 import logging
 
-from .methods import upload_and_get_image_path, get_next_sequence
+from .methods import upload_and_get_image_paths
 from .mongo_client import get_mongo_db, ConnectionFailure
 
 env = environ.Env()
@@ -55,6 +56,13 @@ class FileMongoSerializer(serializers.Serializer):
     description = serializers.CharField(required=False, allow_blank=True, help_text="Cleaned description text.")
     url = serializers.URLField(help_text="Original listing URL.")
 
+    class Meta:
+        # point at your pymongo collection
+        mongo_db = get_mongo_db()
+        model = mongo_db.file
+        # tell DRF to use our bulk‐creator when many=True
+        list_serializer_class = CreateListSerializer
+
     def validate_phone(self, value):
         """
         Ensure phone numbers are positive.
@@ -64,28 +72,14 @@ class FileMongoSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
-        logger_file.info(f"data.get('image_srcs'): {len(data.get('image_srcs'))}, like: {data.get('image_srcs')[0]}")
         if data.get('image_srcs'):  # upload the image (from url) and return the image path
+            logger_file.info(f"data.get('image_srcs'): {len(data.get('image_srcs'))}, like: {data.get('image_srcs')[0]}")
             image_paths = []
-            for url in data.get('image_srcs'):
-                path = upload_and_get_image_path(url, get_next_sequence(get_mongo_db(), 'file'))
-                if path:
-                    image_paths.append(path)
-            data['image_paths'] = image_paths
-
+            if data.get('image_srcs'):
+                image_paths = upload_and_get_image_paths(data.get('image_srcs'),
+                                                         file_number=FileMongoSerializer.get_file_number(get_mongo_db(), 'file'))
+                data['image_paths'] = image_paths
         return data
-        if data.get('total_price') and not data.get('price_per_meter'):
-            raise serializers.ValidationError({
-                'price_per_meter': "This field is required when total_price is set."
-            })
-        return data
-
-    class Meta:
-        # point at your pymongo collection
-        mongo_db = get_mongo_db()
-        model = mongo_db.file
-        # tell DRF to use our bulk‐creator when many=True
-        list_serializer_class = CreateListSerializer
 
     def create(self, validated_data):
         # single‐object insert
@@ -93,3 +87,13 @@ class FileMongoSerializer(serializers.Serializer):
         result = coll.insert_one(validated_data)
         validated_data['_id'] = result.inserted_id
         return validated_data
+
+    @staticmethod
+    def get_file_number(mongodb, name):  # return a numberlike: 13 and increase it in db (next return: 14 for that name)
+        return mongodb.counters.find_one_and_update(  # Go to the "counters" collection and find and update a document
+            {'_id': name},  # Condition: the document whose _id matches the given name (e.g., "my_model")
+            {'$inc': {'seq': 1}},  # Increment the "seq" field by 1
+            return_document=ReturnDocument.AFTER,  # Return the updated document (after increment)
+            upsert=True  # If it doesn’t exist, create it
+        )['seq']  # Just return the "seq" value from the document
+

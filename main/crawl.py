@@ -37,6 +37,8 @@ import re
 import os
 
 from .crawl_setup import advance_setup
+from .serializers import FileMongoSerializer
+from .mongo_client import get_mongo_db
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -128,16 +130,13 @@ class RunModules:        # run a task (for example close map, go next image, ...
             logger_file.error(message)
             return False, message
 
-    def check_end_of_gallery(self):  # check there isnt any next button to get next image
-        wait = WebDriverWait(self.driver, 10)
+    def check_is_video(self):
+        video_selector = "//button[span[text()='play-f']]"
         try:
-            wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@aria-label='تصویر بعدی']")))
-        except:
-            pre_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@aria-label='تصویر قبلی']")))
-            if pre_button:
-                logger_file.error("reached end of images")
-                return True, ''         # end of the gallery
-        return False, ''
+            video_button = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.XPATH, video_selector)))
+            return True, f"video is founded in gallery. video_button boolean: {bool(video_button)}"
+        except TimeoutException:  # element not found
+            return False, ''
 
 
 class GetElement:    # get specefic element and return its value
@@ -186,6 +185,32 @@ class GetElement:    # get specefic element and return its value
             except:
                 logger_file.warning(f"failed getting image element totally")
         return image_element
+
+
+class GetElementLogfull:
+    def __init__(self, driver):
+        self.driver = driver
+
+    def get_title(self, card):
+        try:
+            title_element = card.find_element(By.CSS_SELECTOR, "h2.unsafe-kt-post-card__title")
+            logger.info(f"first attempt itle_element: {title_element}")
+            if not title_element:
+                title_element = card.find_elements(By.CSS_SELECTOR, '.kt-new-post-card__title')
+                logger.info(f"sec attempt title_elements: {title_element}")
+            title = title_element.text.strip()
+            return True, title
+            #    Target the specific 'a' tag using its class
+        except Exception as e:
+            return False, e
+
+    def get_url(self, card):
+        try:
+            link_element = card.find_element(By.CSS_SELECTOR, "a.unsafe-kt-post-card__action")
+            return True, link_element.get_attribute('href')
+        except Exception as e:
+            return False, e
+
 
 class FileCrawl:
     def __init__(self):
@@ -245,53 +270,48 @@ class FileCrawl:
         self.file['description'] = description_clean
 
     def crawl_images(self, driver):
-        '''
-        # Find the first button element that opens the gallery using the class name
-        initial_button = driver.find_elements(By.CLASS_NAME, 'kt-base-carousel__thumbnail-button')
-        if initial_button:  # clicking on first button will cause opening gallery page
-            initial_button = initial_button[0]
-        actions = ActionChains(driver)  # Initialize ActionChains for more complex interactions
-        # Click the initial button to open the gallery
-        try:
-            actions.move_to_element(initial_button).click().perform()
-            time.sleep(2)  # Add a delay to allow the new content or page to load
-        except Exception as e:
-            logger.error(f"can't click on initial button to open the gallery. error: {e}")
-        '''
         run_tasks = RunModules(driver)
         get_element = GetElement(driver, 2)
         image_srcs = set()
         image_success, image_counts = 0, 0  # -1 because always one time finding of next image image ('<') fails after reaching galary's end
-        for i in range(50):       # can crawl max 50 images, dont use while loop for safety
+        for i in range(settings.MAX_IMAGE_CRAWL):       # can crawl max that images. one first and second checks is video or not. others assume is image. (video checks take at leats 10 sec)
             image_counts += 1
-            image_element = get_element.get_image()
+            is_video = run_tasks.check_is_video()
+            image_element = None  # if a file has not image, dont raise confuse error (refernce before assignment below)
+            logger_file.info(f"is_video: {is_video}")
+            if i == 0 or i == 1 and is_video:
+                pass
+            else:
+                image_element = get_element.get_image()
 
             # Get the src attribute
             try:
-                image_url = image_element.get_attribute('src')
-                if image_url:
-                    image_success += 1
-                    image_srcs.add(image_url)
-                else:
-                    logger_file.info(f"image src is blank (while element founded)")
+                if image_element:
+                    image_url = image_element.get_attribute('src')
+                    if image_url:
+                        image_success += 1
+                        image_srcs.add(image_url)
+                    else:
+                        logger_file.info(f"image src is blank (while element founded)")
             except Exception as e:
                 logger_file.error(f"erorr raise getting image's src. error: {e}")
 
+            # try next images even not found image in currnet loop (dont lose others)
             next_image = run_tasks.next_image()
             time.sleep(1)     # just for test trace
             # end_of_gallery = run_tasks.check_end_of_gallery()  # check there isnt any next button to get next image
-            logger_file.info(f"--image {i+1} {next_image[0]}")
-
+            logger_file.info(f"--image {i+1} {bool(image_element)}")
 
             if not next_image[0]:
                 logger_file.info(f"next_image icon not found, reached end of images")
                 break
 
         # in mismatch maybe duplicates or fails
-        logger_file.info(f"crawled images: {image_success}/{image_counts}.")
+        logger_file.info(f"--crawled images: {image_success}/{image_counts}.")
         self.file['image_srcs'] = image_srcs
 
-    def crawl_extra_data(self, driver):  # opens "نمایش همهٔ جزئیات" button and crawl all information
+    def crawl_extra_data(self, driver):  # opens "نمایش همهٔ جزئیات" button and get: 'specs', 'features'
+        # 'specs' for key:value information, and 'features' for single values (end of the subscreen)
         button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//div[@role='button' and .//p[text()='نمایش همهٔ جزئیات']]")))
         driver.execute_script("arguments[0].scrollIntoView(true);", button)  # scroll to get element in view (important)
         button.click()  # Click the outer div button
@@ -340,7 +360,12 @@ def crawl_files(location_to_search, max_files=None):
     wait = WebDriverWait(driver, 10)
     base_url = "https://divar.ir"
     url = "https://divar.ir/s/tehran/buy-apartment"
-
+    # no image:
+    #url = ""
+    # image:
+    #url = "https://divar.ir/s/tehran/buy-apartment?bbox=51.0929756%2C35.5609856%2C51.6052132%2C35.8353386&has-photo=true&map_bbox=51.09297561645508%2C35.56098556518555%2C51.6052131652832%2C35.8353385925293&map_place_hash=1%7C%7Capartment-sell"
+    # video
+    #url = "https://divar.ir/s/tehran/buy-apartment?bbox=51.0929756%2C35.5609856%2C51.6052132%2C35.8353386&has-photo=true&has-video=true&map_bbox=51.09297561645508%2C35.56098556518555%2C51.6052131652832%2C35.8353385925293&map_place_hash=1%7C%7Capartment-sell"
     driver.get(url)     # Load the web page
     crawl_modules = RunModules(driver)
 
@@ -371,39 +396,24 @@ def crawl_files(location_to_search, max_files=None):
             except Exception as e:
                 logger.error(f"Fails getting cards via article.kt-post-card element. error: {e}")
                 cards_on_screen = []
+            getelement_logful = GetElementLogfull(driver)
             for card in cards_on_screen:
-                try:
-                    failed_title = [False]
-                    title_element = card.find_element(By.CSS_SELECTOR, "h2.unsafe-kt-post-card__title")
-                    logger.info(f"first attempt itle_element: {title_element}")
-                    if not title_element:
-                        title_element = card.find_elements(By.CSS_SELECTOR, '.kt-new-post-card__title')
-                        logger.info(f"sec attempt title_elements: {title_element}")
-                    title = title_element.text.strip()
-                    #    Target the specific 'a' tag using its class
-                except Exception as e:
-                    logger.error('aaaaaaaaaa')
-                    failed_title = [True, e]
-                try:
-                    failed_url = [False]
-                    link_element = card.find_element(By.CSS_SELECTOR, "a.unsafe-kt-post-card__action")
-                    card_url = link_element.get_attribute('href')
-                except Exception as e:
-                    failed_url = [True, e]
-                    # some carts are blank or duplicate crawling. required to be checked here
-                if not failed_title[0] and not failed_url[0]:
-                    logger.info(f"succesfully optained url and title of the card: {card_url}, {title}")
-                elif failed_title[0] and not failed_url[0]:
-                    logger.error(f"Could not retrieve title for the card. url of card: {card_url}, full error message: {failed_title[1]}")
-                elif not failed_title[0] and failed_url[0]:
-                    logger.error(f"Could not retrieve url for the card. title of card: {title}, full error message: {failed_url[1]}")
+                sucs_title = getelement_logful.get_title(card)
+                sucs_url = getelement_logful.get_url(card)
+                # some carts are blank or duplicate crawling. required to be checked here
+                if sucs_title[0] and sucs_url[0]:
+                    logger.info(f"succesfully obtained url and title of the card: {sucs_url[1]}, {sucs_title[1]}")
+                elif sucs_url[0] and not sucs_title[0]:
+                    logger.error(f"Could not retrieve title for the card. url of card: {sucs_url[1]}, full error message: {sucs_title[1]}")
+                elif not sucs_url[0] and sucs_title[0]:
+                    logger.error(f"Could not retrieve url for the card. title of card: {sucs_title[1]}, full error message: {sucs_url[1]}")
                 else:
-                    logger.error(f"Could not retrieve title and url of the card. title error: {failed_title}, url error: {failed_url}")
+                    logger.error(f"Could not retrieve title and url of the card. title error: {sucs_title}, url error: {sucs_url}")
 
-                if card_url and title and card_url not in cards and \
+                if sucs_url[0] and sucs_title[0] and sucs_url[1] not in cards and \
                         (not max_files or len(cards) < max_files):  # Note '<=' is false!
-                    absolute_url = urljoin(base_url, card_url)
-                    cards.append(card_url)
+                    # absolute_url = urljoin(base_url, sucs_url[1])
+                    cards.append(sucs_url[1])  # its already full url
                 else:                   # some carts are blank, required to skip them
                     pass
 
@@ -423,7 +433,8 @@ def crawl_files(location_to_search, max_files=None):
         logger.info(f"cards finds: {len(cards)}")
         files, errors = [], {}    # if some files not crawled, trace them in error list
         for i, card_url in enumerate(cards):
-            logger.info(f"going to card {i+1}. card url: {card_url}")
+            logger.info("----------")
+            logger.info(f"--going to card {FileMongoSerializer.get_file_number(get_mongo_db(), 'file')}. card url: {card_url}")
             driver.get(card_url)
             time.sleep(2)
             file_crawl = FileCrawl()

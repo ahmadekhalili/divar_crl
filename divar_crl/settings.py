@@ -228,3 +228,6 @@ MONGO_PORT = int(os.environ.get('MONGO_PORT', 27017))
 
 # It's often useful to construct the URI here as well
 MONGO_URI = f"mongodb://{MONGO_USER_NAME}:{MONGO_USER_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DBNAME}?authSource={MONGO_SOURCE}"
+
+MAX_FILE_CRAWL = 10   # number of files to crawl
+MAX_IMAGE_CRAWL = 50

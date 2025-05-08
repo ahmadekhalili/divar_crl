@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.http import HttpResponse
-
+from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -14,7 +14,6 @@ from .crawl import crawl_files
 from .serializers import FileMongoSerializer
 from .mongo_client import get_mongo_db, ConnectionFailure
 from .crawl_setup import advance_setup, setup
-from .methods import get_next_sequence
 
 logger = logging.getLogger('django')
 
@@ -41,7 +40,7 @@ class CrawlView(APIView):
     def get(self, request):
         logger.info(f"logger working")
         location_to_search = 'کیانشهر'  # request.data['location_to_search']  # like 'کیانشهر'
-        files, errors = crawl_files(location_to_search, 1)
+        files, errors = crawl_files(location_to_search, settings.MAX_FILE_CRAWL)
         unique_titles, unique_files = [], []
         for file in files:  # field unique validation only done when save file singular (so we have to validate here)
             if file['title'] not in unique_titles:
@@ -55,7 +54,7 @@ class CrawlView(APIView):
                 if s.is_valid():
                     logger.info(f"for is valid")
                     files = s.save()
-                    return Response({'files_saved': files, 'files_failed': errors})
+                    return Response({'files_saved': len(files), 'files_failed': errors})
                 else:
                     logger.error(f"for is not valid, error: {s.errors}")
                     return Response(s.errors)
