@@ -4,6 +4,8 @@ import time
 import os
 from scipy.special import expit
 import requests
+import redis
+import json
 
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -64,7 +66,7 @@ class HumanMouseMove:
         return actions
 
 
-def upload_and_get_image_paths(url, file_number):   # upload the image full url to example: /media/file_images/file 1
+def upload_and_get_image_paths(urls, file_number):   # upload the image full url to example: /media/file_images/file 1
     folder = 'file_images'
     sub_folder = f"file {file_number}"
     response = requests.get(url)
@@ -74,3 +76,8 @@ def upload_and_get_image_paths(url, file_number):   # upload the image full url 
         saved_path = default_storage.save(path, ContentFile(response.content))
         return path
     return None
+
+
+def add_to_redis(data):
+    r = redis.Redis()
+    r.xadd('data_stream', {'data': json.dumps(data)})

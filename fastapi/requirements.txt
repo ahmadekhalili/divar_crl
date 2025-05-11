@@ -1,0 +1,9 @@
+fastapi
+httpx
+aiofiles
+pydantic
+motor
+pymongo
+uvicorn
+django-environ
+redis

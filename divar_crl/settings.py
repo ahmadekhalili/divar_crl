@@ -56,6 +56,20 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1", # Use 127.0.0.1 (localhost) and the mapped port
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+        # If you are using Redis version 6 or higher, you might want to consider
+        # using the newer RESP3 protocol for potential performance benefits.
+        # "PROTOCOL": 3,
+    }
+}
+
 ROOT_URLCONF = 'divar_crl.urls'
 
 TEMPLATES = [
@@ -229,5 +243,5 @@ MONGO_PORT = int(os.environ.get('MONGO_PORT', 27017))
 # It's often useful to construct the URI here as well
 MONGO_URI = f"mongodb://{MONGO_USER_NAME}:{MONGO_USER_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DBNAME}?authSource={MONGO_SOURCE}"
 
-MAX_FILE_CRAWL = 10   # number of files to crawl
+MAX_FILE_CRAWL = 1   # number of files to crawl
 MAX_IMAGE_CRAWL = 50

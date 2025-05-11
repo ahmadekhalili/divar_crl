@@ -46,8 +46,8 @@ def advance_setup():
     options = uc.ChromeOptions()
 
     options.binary_location = env('CHROME_PATH1')
-    #options.add_argument(r"user-data-dir=C:/Users/akh/AppData/Local/Google/Chrome/User Data")
-    #options.add_argument(r"--profile-directory=Profile 6")
+    #options.add_argument(f"user-data-dir={env('CHROME_PROFILE_PATH')}")
+    #options.add_argument(f"--profile-directory={env('CHROME_PROFILE_FOLDER')}")
     #profile_path = os.path.join(os.getenv('APPDATA'), 'Local', 'Google', 'Chrome', 'User Data', 'Profile5')
     #options.add_argument(f"user-data-dir={profile_path}")
     #options.add_argument("--disable-extensions")
@@ -61,7 +61,7 @@ def advance_setup():
     #options.add_argument("--lang=en-US")
     #options.add_argument("--disable-geolocation")
 
-    driver = uc.Chrome(service=service, options=options)
+    driver = uc.Chrome(options=options)
     #print('driver path: ', driver.service.path)
     driver.set_window_size(1920, 1080)
     user_agent = UserAgent().random  #"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"

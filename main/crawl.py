@@ -11,6 +11,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.actions.wheel_input import ScrollOrigin
 from selenium.common.exceptions import (
     TimeoutException,
     NoSuchElementException,
@@ -39,6 +40,7 @@ import os
 from .crawl_setup import advance_setup
 from .serializers import FileMongoSerializer
 from .mongo_client import get_mongo_db
+from .methods import add_to_redis
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -49,12 +51,13 @@ logger_file = logging.getLogger('file')
 
 
 class RunModules:        # run a task (for example close map, go next image, ...) and dont important returning specefic elment value (like phone ,...)
-    def __init__(self, driver):
+    def __init__(self, driver, file=None):
         self.driver = driver
+        self.file = file
 
-    def close_map(self, retries=3):
+    def close_map(self, retries=1):
         """
-            Clicks the 'بستن نقشه' FAB button under its role=button parent.
+            Clicks the 'بستن نقشه' showin in cards list (different from each file  map's location in file detail page)
             Retries on common Selenium hiccups and falls back to JS click if needed.
             """
         xpath = (
@@ -100,7 +103,7 @@ class RunModules:        # run a task (for example close map, go next image, ...
             time.sleep(1)
 
     def next_image(self):
-        # click on '<' icon to get next image. return 'end of image' of reach end of gallary
+        # click on '<' icon to get next image. return 'end of image' of reach end of gallery
         wait = WebDriverWait(self.driver, 10)
         try:
             # Wait for the element to be clickable
@@ -138,6 +141,104 @@ class RunModules:        # run a task (for example close map, go next image, ...
         except TimeoutException:  # element not found
             return False, ''
 
+    def zoom_canvas(self, canvas, steps: int = 7, delta: int = -200):
+        """
+        steps: number of wheel scrolls
+        delta: pixes to scroll. positive → scroll down, negative → scroll up
+        """
+        try:
+            origin = ScrollOrigin.from_element(canvas)
+            actions = ActionChains(self.driver)
+            for _ in range(steps):
+                actions.scroll_from_origin(origin, 0, delta)
+            actions.perform()
+
+        except Exception as e:
+            self.file.file_errors.append(f"failed zoming canvas of the file. error: {e}")
+            logger_file.error(f"failed zoming canvas of the file. error: {e}")
+
+    def open_map(self):
+        try:
+            locator = (By.CSS_SELECTOR, "div.image-dbbad picture.kt-image-block--radius-sm img[alt='موقعیت مکانی']")
+            # 2) Wait up to 10s for the element to be present in the DOM
+            elem = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(locator))
+            # 3) Scroll it into view (smoothly, centered)
+            self.driver.execute_script(
+                "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});",
+                elem
+            )
+            # 4) (Optional) give the scroll a moment to settle
+            WebDriverWait(self.driver, 2).until(
+                lambda d: elem.is_displayed() and elem.location_once_scrolled_into_view
+            )
+            # 5) Now wait until it’s clickable
+            clickable = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(locator))
+            clickable.click()  # Click to open the map canvas
+            logger_file.info(f"clicked on map successfully.")
+            return True, ''
+        except Exception as e:
+            self.file.file_errors.append(f"failed opening the map of the file. error: {e}")
+            return False, e
+
+    def upload_map_image(self, canvas, path, image_name):
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)  # ensure directory exists
+            image_path = f"{path}/{image_name}"
+            canvas.screenshot(os.path.join(image_path))  # 3. take screenshot and save to image_path
+            logger_file.info(f"screenshot {image_name} of map canvas has taken successfully to: {path}")
+        except:
+            message = f"failed take screenshot {image_name} of map canvas. path: {path}"
+            logger_file.info(message)
+            self.file.file_errors.append(message)
+
+    def close_canvas(self, timeout=10, retries=3):
+        """
+        Close the “موقعیت مکانی” modal by its close-button.
+
+        Args:
+            driver: Selenium WebDriver instance
+            timeout: seconds to wait on each attempt
+            retries: number of retry attempts
+
+        Raises:
+            TimeoutException if the button never becomes clickable.
+        """
+        # Unique XPath: find the div whose <p> text is exactly “موقعیت مکانی”
+        close_xpath = (
+            "//div[contains(@class,'kt-new-modal__title-box') "
+            "and .//p[text()='موقعیت مکانی']]"
+            "//button[contains(@class,'kt-new-modal__close-button')]"
+        )
+
+        for attempt in range(1, retries + 1):
+            try:
+                # wait for it to be clickable
+                btn = WebDriverWait(self.driver, timeout).until(
+                    EC.element_to_be_clickable((By.XPATH, close_xpath))
+                )
+                # ensure it's in view
+                self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
+                # try JS click first
+                self.driver.execute_script("arguments[0].click();", btn)
+                logger_file.info(f"successfully clicked on close map by js")
+                return  # success
+
+            except (TimeoutException, StaleElementReferenceException, ElementClickInterceptedException):
+                # fallback to ActionChains click
+                try:
+                    btn = self.driver.find_element(By.XPATH, close_xpath)
+                    ActionChains(self.driver).move_to_element(btn).pause(0.2).click(btn).perform()
+                    logger_file.info(f"successfully clicked on close map by ActionChains click")
+                    return  # success
+                except Exception:
+                    # wait and retry
+                    time.sleep(1)
+
+        # if we get here, nothing worked
+        raise TimeoutException(
+            f"Could not locate/click the close button after {retries} attempts ({timeout}s each)."
+        )
+
 
 class GetElement:    # get specefic element and return its value
     def __init__(self, driver, retry=1):
@@ -160,7 +261,7 @@ class GetElement:    # get specefic element and return its value
     def get_image(self):
         image_element = None
         for i in range(self.retry):
-            logger_file.info(f"retry {i+1}:")
+            logger_file.info(f"retry {i+1} for get image element:")
             selector = 'img.kt-image-block__image'  # The CSS selector for the image
             driver = self.driver
 
@@ -168,7 +269,7 @@ class GetElement:    # get specefic element and return its value
                 logger_file.info(f"Attempting to check for presence of element: {selector}")
                 # Wait for the element to be present in the DOM
                 image_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
-                logger_file.info(f"Element is PRESENT in the DOM: {selector}")
+                logger_file.info(f"Element is PRESENT in the DOM. image_element boolean: {bool(image_element)}")
                 return image_element
 
             except TimeoutException:
@@ -211,14 +312,26 @@ class GetElementLogfull:
         except Exception as e:
             return False, e
 
+    def get_uid(self, url):
+        try:
+            uid = url.rstrip("/").split("/")[-1]
+            logger.info(f"uid: {uid}")
+            return True, uid
+        except Exception as e:
+            return False, f"couldn't get uid from card's url. url: {e}"
+
+
 
 class FileCrawl:
-    def __init__(self):
+    def __init__(self, uid):
+        self.uid = uid
         self.file = {
             'phone': None, 'title': None, 'metraj': None, 'age': None, 'otagh': None, 'total_price': None,
             'price_per_meter': None, 'floor_number': None, 'general_features': None, 'description': None,
             'image_srcs': None, 'specs': None, 'features': None, 'url': None
         }
+        self.file_errors = []
+        self.screenshot_map_path = env('screenshot_map_path').format(uid=uid)
 
     def __repr__(self):
         # Get the current module and class name dynamically
@@ -231,56 +344,70 @@ class FileCrawl:
 
     def crawl_main_data(self, driver):
         # Extract the title
-        title = driver.find_element(By.CLASS_NAME, 'kt-page-title__title').text.strip()
-        self.file['title'] = title
-        logger.info(f"title crawld: {title}")
-        # Extract the table values (مترج، ساخت، اتاق)
-        td_elements = driver.find_elements(By.XPATH, "//tr[@class='kt-group-row__data-row']//td")
-        metraj = td_elements[0].text.strip()
-        age = td_elements[1].text.strip()
-        otagh = td_elements[2].text.strip()
-        self.file['metraj'], self.file['age'], self.file['otagh'] = metraj, age, otagh
+        try:
+            title = driver.find_element(By.CLASS_NAME, 'kt-page-title__title').text.strip()
+            self.file['title'] = title
+            logger.info(f"title crawld: {title}")
+        except Exception as e:
+            self.file_errors.append(f"couldn't get title of the card. error: {e}")
 
+        try:
+            # Extract the table values (مترج، ساخت، اتاق)
+            td_elements = driver.find_elements(By.XPATH, "//tr[@class='kt-group-row__data-row']//td")
+            metraj = td_elements[0].text.strip()
+            age = td_elements[1].text.strip()
+            otagh = td_elements[2].text.strip()
+            self.file['metraj'], self.file['age'], self.file['otagh'] = metraj, age, otagh
+        except Exception as e:
+            self.file_errors.append(f"couldn't get 'metraj', 'sakht', 'oraq' specs of the card. error: {e}")
         # Extract pricing information (total_price, price_per_meter, floor_number)
-        texts = []
-        base_divs = driver.find_elements(By.CSS_SELECTOR, ".kt-base-row.kt-base-row--large.kt-unexpandable-row")
-        for div in base_divs:
-            value_box = div.find_element(By.CSS_SELECTOR, ".kt-base-row__end.kt-unexpandable-row__value-box")
-            # required to use try statement (some value_boxes are not real and have not p tag inside themselves)
-            try:
-                p_element = value_box.find_element(By.XPATH, ".//p")
-            except:
-                p_element = None
-            if p_element:
-                texts.append(p_element.text)
-        if len(texts) == 4:     # texts[0] == 'bale' | 'kheir' some properties have it.
-             total_price, price_per_meter, floor_number = texts[1], texts[2], texts[3]
-        else:
-            total_price, price_per_meter, floor_number = texts[0], texts[1], texts[2]
-        self.file['total_price'], self.file['price_per_meter'], self.file['floor_number'] = total_price, price_per_meter, floor_number
 
-        # Extract پارکینگ، آسانسور، انباری، بالکن information
-        general_features = [td.text.strip() for td in driver.find_elements(By.XPATH, "//td[@class='kt-group-row-item kt-group-row-item__value kt-body kt-body--stable']")]
-        self.file['general_features'] = general_features
+        try:
+            texts = []
+            base_divs = driver.find_elements(By.CSS_SELECTOR, ".kt-base-row.kt-base-row--large.kt-unexpandable-row")
+            for div in base_divs:
+                value_box = div.find_element(By.CSS_SELECTOR, ".kt-base-row__end.kt-unexpandable-row__value-box")
+                # required to use try statement (some value_boxes are not real and have not p tag inside themselves)
+                try:
+                    p_element = value_box.find_element(By.XPATH, ".//p")
+                except:
+                    p_element = None
+                if p_element:
+                    texts.append(p_element.text)
+            if len(texts) == 4:     # texts[0] == 'bale' | 'kheir' some properties have it.
+                 total_price, price_per_meter, floor_number = texts[1], texts[2], texts[3]
+            else:
+                total_price, price_per_meter, floor_number = texts[0], texts[1], texts[2]
+            self.file['total_price'], self.file['price_per_meter'], self.file['floor_number'] = total_price, price_per_meter, floor_number
+        except Exception as e:
+            self.file_errors.append(f"couldn't get 'total_price' the card. error: {e}")
 
-        # Extract and clean description
-        description_element = driver.find_element(By.CLASS_NAME, 'kt-description-row__text--primary')
-        description = description_element.text.strip() if description_element else False
-        description_clean = re.sub(r'[^\w\s!@#$%^&*()\-_=+;:\'"~,،؛{}\]\[]', '', description)    # remove all symbols, only text + new lines + required signs
-        self.file['description'] = description_clean
+        try:
+            # Extract پارکینگ، آسانسور، انباری، بالکن information
+            general_features = [td.text.strip() for td in driver.find_elements(By.XPATH, "//td[@class='kt-group-row-item kt-group-row-item__value kt-body kt-body--stable']")]
+            self.file['general_features'] = general_features
+
+            # Extract and clean description
+            description_element = driver.find_element(By.CLASS_NAME, 'kt-description-row__text--primary')
+            description = description_element.text.strip() if description_element else False
+            description_clean = re.sub(r'[^\w\s!@#$%^&*()\-_=+;:\'"~,،؛{}\]\[]', '', description)    # remove all symbols, only text + new lines + required signs
+            self.file['description'] = description_clean
+        except Exception as e:
+            self.file_errors.append(f"couldn't get 'description' the card. error: {e}")
 
     def crawl_images(self, driver):
-        run_tasks = RunModules(driver)
+        run_tasks = RunModules(driver, self)
         get_element = GetElement(driver, 2)
         image_srcs = set()
         image_success, image_counts = 0, 0  # -1 because always one time finding of next image image ('<') fails after reaching galary's end
-        for i in range(settings.MAX_IMAGE_CRAWL):       # can crawl max that images. one first and second checks is video or not. others assume is image. (video checks take at leats 10 sec)
+        for i in range(settings.MAX_IMAGE_CRAWL):       # crawl maximum MAX_IMAGE_CRAWL images. 1 and sec of image secs for video type. others assume is image. (video checks take at leats 10 sec)
             image_counts += 1
-            is_video = run_tasks.check_is_video()
-            image_element = None  # if a file has not image, dont raise confuse error (refernce before assignment below)
-            logger_file.info(f"is_video: {is_video}")
-            if i == 0 or i == 1 and is_video:
-                pass
+            image_element = None  # if a file has not image, dont raise confuse error (reference before assignment below)
+
+            if i == 0 or i == 1:  # check_is_video add 10 sec delay timeout, so dont run in every loop
+                is_video = run_tasks.check_is_video()
+                if is_video[0]:   # skip if was video (go next image)
+                    logger_file.info(f"is_video: {is_video}")
             else:
                 image_element = get_element.get_image()
 
@@ -294,13 +421,13 @@ class FileCrawl:
                     else:
                         logger_file.info(f"image src is blank (while element founded)")
             except Exception as e:
-                logger_file.error(f"erorr raise getting image's src. error: {e}")
+                logger_file.error(f"error raise getting image's src. error: {e}")
 
             # try next images even not found image in currnet loop (dont lose others)
             next_image = run_tasks.next_image()
-            time.sleep(1)     # just for test trace
+            #time.sleep(0.1)     # just for test trace
             # end_of_gallery = run_tasks.check_end_of_gallery()  # check there isnt any next button to get next image
-            logger_file.info(f"--image {i+1} {bool(image_element)}")
+            logger_file.info(f"--image {i+1}, image_element boolean: {bool(image_element)}")
 
             if not next_image[0]:
                 logger_file.info(f"next_image icon not found, reached end of images")
@@ -310,12 +437,59 @@ class FileCrawl:
         logger_file.info(f"--crawled images: {image_success}/{image_counts}.")
         self.file['image_srcs'] = image_srcs
 
+    def crawl_map(self, driver):
+        run_modules = RunModules(driver, self)
+        map_paths = []
+        map_opended = False
+        try:
+            map_opended = run_modules.open_map()[0]  # open map to take screenshot from canvas (map area)
+
+            time.sleep(6)            # its required, canvas element cant be wait at all via selenium functions
+            canvas = driver.find_element(By.CSS_SELECTOR, "canvas.mapboxgl-canvas")
+            logger_file.info(f"bool map's canvas: {bool(canvas)}")
+
+            path = run_modules.upload_map_image(canvas, self.screenshot_map_path, "normal_view.png")
+            map_paths.append(path)
+
+
+            # 4. Zoom in default steps of zoom_canvas
+            run_modules.zoom_canvas(canvas)
+            time.sleep(5)
+            path = run_modules.upload_map_image(canvas, self.screenshot_map_path, "zoom_view.png")
+            map_paths.append(path)
+        except TimeoutException:
+            message = f"TimeoutException in map setioction."
+            logger_file.error(message)
+            self.file_errors.append(message)
+        except Exception as e:
+            message = f"Exception in map setioction. error: {e}"
+            logger_file.error(message)
+            self.file_errors.append(message)
+
+        if map_opended:
+            try:
+                close_btn = run_modules.close_canvas()
+            except TimeoutException as e:
+                message = f"map opended but cant close it. TimeoutException maybe close element not found, {e}"
+                logger_file.error(message)
+                self.file_errors.append(message)
+            except NoSuchElementException as e:
+                message = f"map opended but cant close it. close element not found, {e}"
+                logger_file.error(message)
+                self.file_errors.append(message)
+            except Exception as e:
+                message = f"unexpected exception. map opended but cant close it. error in clicking close button: {e}"
+                logger_file.error(message)
+                self.file_errors.append(message)
+        self.file['map_paths'] = map_paths
+
     def crawl_extra_data(self, driver):  # opens "نمایش همهٔ جزئیات" button and get: 'specs', 'features'
         # 'specs' for key:value information, and 'features' for single values (end of the subscreen)
+        logger_file.info(f"running crawl_extra_data nice")
         button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//div[@role='button' and .//p[text()='نمایش همهٔ جزئیات']]")))
         driver.execute_script("arguments[0].scrollIntoView(true);", button)  # scroll to get element in view (important)
         button.click()  # Click the outer div button
-
+        logger_file.info(f"successfully clicked on 'نمایش همهٔ جزئیات' button")
         try:
             # Wait for the modal to be present
             modal_body = WebDriverWait(driver, 10).until(
@@ -330,6 +504,7 @@ class FileCrawl:
                 value = row.find_element(By.CLASS_NAME, 'kt-unexpandable-row__value').text
                 specs[title] = value
             self.file['specs'] = specs
+            logger_file.info(f"successfully filled 'specs'. specs number: {len(specs)}")
 
             # Extract full features under "امکانات"
             features = []
@@ -338,9 +513,11 @@ class FileCrawl:
                 feature = el.find_element(By.CLASS_NAME, 'kt-feature-row__title').text
                 features.append(feature)
             self.file['features'] = features
-
+            logger_file.info(f"successfully filled 'features'. features number: {len(specs)}")
         except Exception as e:
-            print(f"Error extracting modal data: {e}")
+            message = f"Error extracting data in ('نمایش همهٔ جزئیات') section. error: {e}"
+            logger_file.error(message)
+            self.file_errors.append(message)
             return {}, []
 
         # Close the modal by clicking the close button
@@ -351,6 +528,7 @@ class FileCrawl:
         logger.info(f"going to crawl_main_data")
         self.crawl_main_data(driver)
         self.crawl_images(driver)
+        self.crawl_map(driver)
         self.crawl_extra_data(driver)
 
 
@@ -370,7 +548,7 @@ def crawl_files(location_to_search, max_files=None):
     crawl_modules = RunModules(driver)
 
     try:
-        crawl_modules.close_map()
+        crawl_modules.close_map(retries=1)
     except Exception as e:
         logger.error(f"{e}")       # skip closing if failed
 
@@ -400,6 +578,7 @@ def crawl_files(location_to_search, max_files=None):
             for card in cards_on_screen:
                 sucs_title = getelement_logful.get_title(card)
                 sucs_url = getelement_logful.get_url(card)
+                sucs_uid = getelement_logful.get_uid(sucs_url[1])
                 # some carts are blank or duplicate crawling. required to be checked here
                 if sucs_title[0] and sucs_url[0]:
                     logger.info(f"succesfully obtained url and title of the card: {sucs_url[1]}, {sucs_title[1]}")
@@ -413,7 +592,7 @@ def crawl_files(location_to_search, max_files=None):
                 if sucs_url[0] and sucs_title[0] and sucs_url[1] not in cards and \
                         (not max_files or len(cards) < max_files):  # Note '<=' is false!
                     # absolute_url = urljoin(base_url, sucs_url[1])
-                    cards.append(sucs_url[1])  # its already full url
+                    cards.append((sucs_uid[1], sucs_url[1]))  # sucs_url[1] is already full url
                 else:                   # some carts are blank, required to skip them
                     pass
 
@@ -432,15 +611,16 @@ def crawl_files(location_to_search, max_files=None):
 
         logger.info(f"cards finds: {len(cards)}")
         files, errors = [], {}    # if some files not crawled, trace them in error list
-        for i, card_url in enumerate(cards):
+        for i, card in enumerate(cards):
             logger.info("----------")
-            logger.info(f"--going to card {FileMongoSerializer.get_file_number(get_mongo_db(), 'file')}. card url: {card_url}")
-            driver.get(card_url)
+            logger.info(f"--going to card {FileMongoSerializer.get_file_number(get_mongo_db(), 'file')}. card url: {card[1]}")
+            driver.get(card[1])
             time.sleep(2)
-            file_crawl = FileCrawl()
+            file_crawl = FileCrawl(uid=card[0])
             try:
-                file_crawl.file['url'] = card_url  # save url before crawl others
+                file_crawl.file['url'] = card[1]  # save url before crawl others
                 file_crawl.crawl_file(driver)  # fills .file
+                add_to_redis(file_crawl.file)
             except Exception as e:
                 errors['cart_url'] = str(e)
             files.append(file_crawl.file)
@@ -455,3 +635,8 @@ def crawl_files(location_to_search, max_files=None):
         driver.quit()
 
     return (files, errors)
+
+
+def test_crawl(url="https://divar.ir"):
+    driver = advance_setup()
+    driver.get(url)

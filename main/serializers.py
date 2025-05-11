@@ -73,7 +73,7 @@ class FileMongoSerializer(serializers.Serializer):
 
     def validate(self, data):
         if data.get('image_srcs'):  # upload the image (from url) and return the image path
-            logger_file.info(f"data.get('image_srcs'): {len(data.get('image_srcs'))}, like: {data.get('image_srcs')[0]}")
+            logger_file.info(f"validating 'image_srcs' in serializer. total numbers: {len(data.get('image_srcs'))}, like: {data.get('image_srcs')[0]}")
             image_paths = []
             if data.get('image_srcs'):
                 image_paths = upload_and_get_image_paths(data.get('image_srcs'),
@@ -96,4 +96,3 @@ class FileMongoSerializer(serializers.Serializer):
             return_document=ReturnDocument.AFTER,  # Return the updated document (after increment)
             upsert=True  # If it doesn’t exist, create it
         )['seq']  # Just return the "seq" value from the document
-

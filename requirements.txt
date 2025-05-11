@@ -16,3 +16,4 @@ numpy
 scipy
 pymongo
 python-dotenv
+django-redis
