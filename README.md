@@ -58,19 +58,24 @@ screenshot_map_path=media/file_{uid}/file_mapes
 ### settings.py
 APARTMENT_EJARE_ZAMIN = "https//:..."
 CATEGORY = "apartment"  # can be 'apartment', 'zamin_kolangy', 'vila'
-EJARE = True
+IS_EJARE = True
 TEST_MANUAL_CARD_SELECTION = None
 
-**APARTMENT_EJARE_ZAMIN:**
-apartment and ejare and zamin saves in different dbs. you has specify to crawl each of them by specify settings.APARTMENT_EJARE_ZAMIN. it is also possible to set files only contain images or only videos or no images ... here.
+**`APARTMENT_EJARE_ZAMIN:`**
+apartment and ejare and zamin saves in different dbs. you have to specify url, to crawl each of them by specify settings.APARTMENT_EJARE_ZAMIN.  
+Note: each of categories ejera has difference url. so for switch to ejare each of them should specify its url. so apartment ejare, vali ejera,.. has differrent url.  
+it is also possible to set files only contain images or only videos or no images ... here.
 
-**CATEGORY:**
+**`CATEGORY:`**
 set CATEGORY based on APARTMENT_EJARE_ZAMIN selection.
 
-**EJARE:**
-can be True, False    # if True, get ejare houses (vadie, ejare atts added in same table)
+**`IS_EJARE:`**
+can be True, False  
+if True, get ejare houses (vadie, ejare atts added in same table). also APARTMENT_EJARE_ZAMIN should change based on it.
 
-**TEST_MANUAL_CARD_SELECTION:**
+**all these 3 settings confs should change with each other!**  
+
+**`TEST_MANUAL_CARD_SELECTION:`**
 to test specefic file crawling in divar, set settings.TEST_MANUAL_CARD_SELECTION, or `None` in production and pass to crawl_files. structure: `[(file_uid, file_url)]`
 
 

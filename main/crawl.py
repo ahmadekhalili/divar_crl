@@ -50,6 +50,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
 env.read_env(os.path.join(BASE_DIR, '.env'))
 logger = logging.getLogger('web')
+logger_separation = logging.getLogger("web_separation")
 logger_file = logging.getLogger('file')
 
 
@@ -58,6 +59,12 @@ class Retry:
 
     @staticmethod
     def run_retry(func, *args, retry=retry, **kwargs):
+        '''
+        can use in:
+        @Retry.run_retry
+        @Retry.run_retry()
+        @Retry.run_retry(retry=2)
+        '''
         def wrapper(*args, **kwargs):
             for i in range(retry):
                 try:
@@ -157,12 +164,23 @@ class RunModules:        # run a task (for example close map, go next image, ...
             return False, message
 
     def check_is_video(self):
+        wait = WebDriverWait(self.driver, 5)
         video_selector = "//button[span[text()='play-f']]"
         try:
-            video_button = WebDriverWait(self.driver, 1).until(EC.element_to_be_clickable((By.XPATH, video_selector)))
+            video_button = wait.until(EC.element_to_be_clickable((By.XPATH, video_selector)))
             return True, f"video is founded in gallery. video_button boolean: {bool(video_button)}"
         except TimeoutException:  # element not found
             return False, ''
+
+    def check_end_of_gallery(self):
+        wait = WebDriverWait(self.driver, 10)
+        try:
+            next_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@aria-label='تصویر بعدی']")))
+            logger_file.info(f"next_button found")
+            return False, ''
+        except:
+            logger_file.info(f"next_button not found")
+            return True, ''
 
     def zoom_canvas(self, canvas, steps: int = 7, delta: int = -200):
         """
@@ -181,6 +199,7 @@ class RunModules:        # run a task (for example close map, go next image, ...
             logger_file.error(f"failed zoming canvas of the file. error: {e}")
 
     def open_map(self):  # here should stop further crawling of map if fails (return False)
+        self.available_map_element = False
         for i in range(self.retry):
             logger_file.info(f"try open map. retry: {i+1}/{self.retry}")
             try:
@@ -188,6 +207,7 @@ class RunModules:        # run a task (for example close map, go next image, ...
                 # 2) Wait up to 10s for the element to be present in the DOM
                 elem = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(locator))
                 # 3) Scroll it into view (smoothly, centered)
+                self.available_map_element = bool(elem)
                 self.driver.execute_script(
                     "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});",
                     elem
@@ -202,10 +222,12 @@ class RunModules:        # run a task (for example close map, go next image, ...
                 logger_file.info(f"clicked on map successfully.")
                 return True, ''
             except Exception as e:
-                logger_file.error(f"failed opening the map of the file. error: {e}")
+                if self.available_map_element:
+                    logger_file.error(f"failed opening the map of the file. error: {e}")
 
                 if i+1 == self.retry:
-                    self.file.file_errors.append(f"failed opening the map of the file.")  # dont write several times
+                    if self.available_map_element:
+                        self.file.file_errors.append(f"failed opening the map of the file.")  # dont write several times
                     raise      # reraise for upstream (should stop map crawling)
 
     def upload_map_image(self, canvas, path, image_name):
@@ -325,7 +347,7 @@ class GetElement:    # get specific element and return its value
     def get_title_from_cardbox(self, card):  # get title from card box (not inside file page)
         try:
             title_element = card.find_element(By.CSS_SELECTOR, "h2.unsafe-kt-post-card__title")
-            logger.info(f"first attempt itle_element: {title_element}")
+            logger.info(f"first attempt title_element: {title_element}")
             if not title_element:
                 title_element = card.find_elements(By.CSS_SELECTOR, '.kt-new-post-card__title')
                 logger.info(f"sec attempt title_elements: {title_element}")
@@ -345,7 +367,7 @@ class GetElement:    # get specific element and return its value
     def get_uid(self, url):
         try:
             uid = url.rstrip("/").split("/")[-1]
-            logger.info(f"uid: {uid}")
+            logger.info(f"successfully obtained uid: {uid}")
             return True, uid
         except Exception as e:
             return False, f"couldn't get uid from card's url. url: {e}"
@@ -375,7 +397,7 @@ class GetElement:    # get specific element and return its value
             try:
                 logger_file.info(f"Attempting to check for presence of element: {selector}")
                 image_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
-                logger_file.info(f"Successfully get PRESENT of the image. in retry {i+1}/{self.retry}")
+                logger_file.debug(f"Successfully get PRESENT of the image. in retry {i+1}/{self.retry}")
                 return True, image_element
 
             except TimeoutException:
@@ -390,7 +412,7 @@ class GetElement:    # get specific element and return its value
         for i in range(self.retry):
             try:
                 image_url = image_element.get_attribute('src')
-                logger_file.info(f"successfully get image src. in retry {i+1}/{self.retry}")
+                logger_file.debug(f"successfully get image src. in retry {i+1}/{self.retry}")
                 return True, image_url
             except StaleElementReferenceException as e:
                 logger_file.error(f"error StaleElement getting image's src. wait and retry again. retry {i+1}/{self.retry}")
@@ -415,6 +437,7 @@ class GetElement:    # get specific element and return its value
             logger_file.error(f"Failed to get tags: {e}")
             return False, []
 
+    @Retry.run_retry
     def get_agency_info(self):
         try:
             # Wait for the full agency card to appear
@@ -604,8 +627,7 @@ class GetValue:       # get final values ready to add in file fields
         image_srcs = set()
         image_success, image_counts = 0, 0  # -1 because always one time finding of next image ('<') fails after reaching galary's end
 
-        for i in range(
-                settings.MAX_IMAGE_CRAWL):  # crawl maximum MAX_IMAGE_CRAWL images. 1 and sec of image secs for video type. others assume is image. (video checks take at leats 10 sec)
+        for i in range(settings.MAX_IMAGE_CRAWL):  # crawl maximum MAX_IMAGE_CRAWL images. 1 and sec of image secs for video type. others assume is image. (video checks take at leats 10 sec)
             image_counts += 1
             is_image = [False]  # if a file has not image, dont raise confuse error (reference before assignment below)
 
@@ -617,7 +639,7 @@ class GetValue:       # get final values ready to add in file fields
                     is_image = get_element.get_image()
             else:
                 is_image = get_element.get_image()
-            time.sleep(1)  # presense method in .get_image cant wait for load. (but take image perfect)
+            time.sleep(1)  # here required, otherwise one image will count as 4-5 image!
             # Get the src attribute
             if is_image[0]:
                 image_url = get_element.get_image_src(is_image[1])
@@ -629,9 +651,9 @@ class GetValue:       # get final values ready to add in file fields
 
             # try next images even not found image in currnet loop (dont lose others)
             next_image = run_tasks.next_image()
-            # time.sleep(0.1)     # just for test trace
-            # end_of_gallery = run_tasks.check_end_of_gallery()  # check there isnt any next button to get next image
-            logger_file.info(f"image {i + 1}, image_element boolean: {is_image[0]}")
+            time.sleep(1)     # just for test trace
+            #end_of_gallery = run_tasks.check_end_of_gallery()  # check via end_of_gallery may is safe and reasonable
+            logger_file.info(f"---image {i + 1}, image_element boolean: {is_image[0]}, next_image bool: {next_image[0]}")
 
             if not next_image[0]:
                 logger_file.info(f"next_image icon not found, reached end of images")
@@ -662,12 +684,12 @@ class FileBase:
 
 
 class Apartment:
-    def __init__(self, uid, ejare):
+    def __init__(self, uid, is_ejare):
         self.uid = uid
-        self.is_ejare = ejare
+        self.is_ejare = is_ejare
         self.file = {
             'uid': uid, 'phone': None, 'title': None, 'metraj': None, 'age': None, 'otagh': None, 'total_price': None,
-            'price_per_meter': None, 'floor_number': None, 'general_features': {}, 'description': '', 'tags': [],
+            'price_per_meter': None, 'floor_number': None, 'general_features': [], 'description': '', 'tags': [],
             'agency': None, 'rough_time': None, 'rough_address': None,
             'vadie': None, 'ejare': None, 'vadie_exchange': None,      # just for ejare files, vadie_exchange means can ejare vadie can be exchange or not, it is str
             'image_srcs': [], 'specs': {}, 'features': [], 'url': None
@@ -700,7 +722,7 @@ class Apartment:
 
             self.file['metraj'], self.file['age'], self.file['otagh'] = get_value.get_metraj_age_oragh()
 
-            # Extract pricing information (total_price, price_per_meter, floor_number)
+            # Extract ejare section
             if self.is_ejare:
                 self.file["vadie"], self.file["ejare"], self.file["vadie_exchange"], self.file["floor_number"] = get_value.get_vadie_ejare_andsoon()
             else:
@@ -742,6 +764,7 @@ class Apartment:
         run_modules = RunModules(driver, self)
         map_paths = []
         map_opended = False
+        run_modules.available_map_element = False  # can set True in open_map, False means there isnt any map for the file so dont add error of like: "unable to find map .." in self.file_errors
         try:
             map_opended = run_modules.open_map()[0]  # open map to take screenshot from canvas (map area)
             if not map_opended:
@@ -753,7 +776,7 @@ class Apartment:
             is_uploaded = run_modules.upload_map_image(canvas, self.screenshot_map_path, "normal_view.png")
             if is_uploaded[0]:
                 map_paths.append(os.path.join(self.screenshot_map_path, "normal_view.png"))
-            else:
+            elif run_modules.available_map_element:
                 self.file_errors.append(is_uploaded[1])
 
             # 4. Zoom in default steps of zoom_canvas
@@ -762,20 +785,22 @@ class Apartment:
             is_uploaded2 = run_modules.upload_map_image(canvas, self.screenshot_map_path, "zoom_view.png")
             if is_uploaded2[0]:
                 map_paths.append(os.path.join(self.screenshot_map_path, "zoom_view.png"))
-            else:
+            elif run_modules.available_map_element:
                 self.file_errors.append(is_uploaded2[2])
         except TimeoutException:
             message = f"TimeoutException in map section."
             logger_file.error(message)
-            self.file_errors.append(f"Exception in map section. element not found.")
+            if run_modules.available_map_element:
+                self.file_errors.append(f"Exception in map section. element not found.")
         except Exception as e:
             message = f"Exception in map section. error: {e}"
             logger_file.error(message)
-            self.file_errors.append(f"Some Fails in map section.")
+            if run_modules.available_map_element:
+                self.file_errors.append(f"Some Fails in map section.")
 
         if map_opended:
             try:
-                close_btn = run_modules.close_canvas()
+                close_btn = run_modules.close_canvas(retries=3)
             except TimeoutException as e:
                 message = f"map opended but cant close it. TimeoutException maybe close element not found, {e}"
                 logger_file.error(message)
@@ -869,7 +894,7 @@ class Apartment:
 
 
 class ZaminKolangy(Apartment):  # general_features, specs, features removed
-    def __init__(self, uid):
+    def __init__(self, uid, is_ejare):
         super().__init__(uid)
         del self.file['general_features']
         del self.file['specs']
@@ -891,7 +916,7 @@ class ZaminKolangy(Apartment):  # general_features, specs, features removed
                 self.file['rough_time'] = rough_time
                 self.file['rough_address'] = rough_address
 
-            # Extract pricing information (total_price, price_per_meter, floor_number)
+            # in ZaminKolagy files, we have not ejare part.
             self.file['metraj'], self.file['total_price'], self.file['price_per_meter'] = get_value.get_tprice_pprice_floor("metraj", "total_price", "price_per_meter")
 
             self.file['description'] = get_value.get_description()
@@ -930,8 +955,8 @@ class ZaminKolangy(Apartment):  # general_features, specs, features removed
 
 
 class Vila(Apartment):  # file data same with apartment
-    def __init__(self, uid):
-        super().__init__(uid)
+    def __init__(self, uid, is_ejare):
+        super().__init__(uid, is_ejare)
         self.file['zamin_metraj'] = ''
         del self.file['floor_number']
 
@@ -950,8 +975,19 @@ class Vila(Apartment):  # file data same with apartment
 
             self.file['metraj'], self.file['age'], self.file['otagh'] = get_value.get_metraj_age_oragh()
 
-            # Extract pricing information (total_price, price_per_meter, floor_number)
-            self.file['zamin_metraj'], self.file['total_price'], self.file['price_per_meter'] = get_value.get_tprice_pprice_floor("zamin_metraj", "total_price", "price_per_meter")
+            # Extract ejare section
+            if self.is_ejare:  # in is_ejare, Apartment and vila have a bit differrence keys
+                self.file["zamin_metraj"], self.file["vadie"], self.file["ejare"], self.file["vadie_exchange"] = get_value.get_vadie_ejare_andsoon()
+            else:  # in sell, Apartment and vila have a bit differrence keys
+                self.file['zamin_metraj'], self.file['total_price'], self.file['price_per_meter'] = get_value.get_tprice_pprice_floor("zamin_metraj", "total_price", "price_per_meter")
+
+            try:
+                # Extract پارکینگ، آسانسور، انباری، بالکن information
+                general_features = [td.text.strip() for td in driver.find_elements(By.XPATH, "//td[@class='kt-group-row-item kt-group-row-item__value kt-body kt-body--stable']")]
+                self.file['general_features'] = general_features
+            except Exception as e:
+                logger_file.error(f"couldn't get 'general_features' the card. error: {e}")
+                self.file_errors.append(f"couldn't get 'general_features' the card.")
 
             self.file['description'] = get_value.get_description()
 
@@ -975,22 +1011,26 @@ class Vila(Apartment):  # file data same with apartment
         try:
             self.crawl_main_data(driver)
         except Exception as e:
-            logger.debug(f"error in .run crawl_main_data, just for debug {e}")
+            pass
 
         try:
             self.crawl_images(driver)
         except Exception as e:
-            logger.debug(f"error in .run crawl_images, just for debug {e}")
+            pass
 
         try:
             self.crawl_map(driver)
         except Exception as e:
-            logger.debug(f"error in .run crawl_map, just for debug {e}")
+            pass
 
+        try:
+            self.crawl_extra_data(driver)
+        except Exception as e:
+            pass
 
-def crawl_files(category, ejare, location_to_search, max_files=None, test_manualy_card_selection=None):
+def crawl_files(category, is_ejare, location_to_search, max_files=None, test_manual_card_selection=None):
     # cards_on_screen just for test. crawl only specific card. its value is a ["a card element (html)"]
-    production = False if test_manualy_card_selection else True
+    production = False if test_manual_card_selection else True
     driver = advance_setup()
     wait = WebDriverWait(driver, 10)
     base_url = "https://divar.ir"
@@ -1036,7 +1076,8 @@ def crawl_files(category, ejare, location_to_search, max_files=None, test_manual
                     sucs_uid = get_element.get_uid(sucs_url[1])
                     # some carts are blank or duplicate crawling. required to be checked here
                     if sucs_title[0] and sucs_url[0]:
-                        logger.info(f"succesfully obtained url and title of the card: {sucs_url[1]}, {sucs_title[1]}")
+                        # we dont want uid prints to mutch in our .log, to find faster specific file and debug it
+                        logger.info(f"succesfully obtained url and title of the card: {bool(sucs_url[1])}, {bool(sucs_title[1])}")
                     elif sucs_url[0] and not sucs_title[0]:
                         logger.error(f"Could not retrieve title for the card. url of card: {sucs_url[1]}, full error message: {sucs_title[1]}")
                     elif not sucs_url[0] and sucs_title[0]:
@@ -1073,11 +1114,12 @@ def crawl_files(category, ejare, location_to_search, max_files=None, test_manual
             elif category == 'vila':
                 file_instance = Vila
             for i, card in enumerate(cards):
-                logger.info("----------")
+                logger_separation.info("")
+                logger_separation.info("----------")
                 logger.info(f"--going to card {card[0]}. card url: {card[1]}")
                 driver.get(card[1])
                 time.sleep(2)
-                file_crawl = file_instance(uid=card[0], ejare=ejare)
+                file_crawl = file_instance(uid=card[0], is_ejare=is_ejare)
                 logger.info(f"selected file_crawl category {category}: {file_crawl}")
                 try:
                     file_crawl.file['url'] = card[1]  # save url before crawl others
@@ -1085,7 +1127,7 @@ def crawl_files(category, ejare, location_to_search, max_files=None, test_manual
                     file_crawl.run(driver)  # fills .file
 
                     if settings.WRITE_REDIS_MONGO:  # is_ejare should no conflics with 'ejare' price inside redis
-                        add_to_redis({**file_crawl.file, "category": category, "is_ejare": ejare, "file_errors": file_crawl.file_errors})
+                        add_to_redis({**file_crawl.file, "category": category, "is_ejare": is_ejare, "file_errors": file_crawl.file_errors})
                 except Exception as e:
                     logger.error(f"failed cart to crawl. error: {e}")
                     errors['cart_url'] = str(e)
@@ -1100,8 +1142,8 @@ def crawl_files(category, ejare, location_to_search, max_files=None, test_manual
         finally:
             driver.quit()
 
-    elif test_manualy_card_selection:
-        cards ,category = test_manualy_card_selection, 'apartment'
+    elif test_manual_card_selection:
+        cards ,category = test_manual_card_selection, 'apartment'
 
         logger.info(f"test env. cards finds: {len(cards)}")
         files, errors = [], {}  # if some files not crawled, trace them in error list
@@ -1112,11 +1154,12 @@ def crawl_files(category, ejare, location_to_search, max_files=None, test_manual
         elif category == 'vila':
             file_instance = Vila
         for i, card in enumerate(cards):
-            logger.info("----------")
+            logger_separation.info("")
+            logger_separation.info("----------")
             logger.info(f"--going to card {card[0]}. card url: {card[1]}")
             driver.get(card[1])
             time.sleep(2)
-            file_crawl = file_instance(uid=card[0], ejare=ejare)
+            file_crawl = file_instance(uid=card[0], is_ejare=is_ejare)
             logger.info(f"selected file_crawl category {category}: {file_crawl}")
             try:
                 file_crawl.file['url'] = card[1]  # save url before crawl others
@@ -1124,7 +1167,7 @@ def crawl_files(category, ejare, location_to_search, max_files=None, test_manual
                 file_crawl.run(driver)  # fills .file
 
                 if settings.WRITE_REDIS_MONGO:  # is_ejare should no conflics with 'ejare' price inside redis
-                    add_to_redis({**file_crawl.file, "category": category, "is_ejare": ejare,
+                    add_to_redis({**file_crawl.file, "category": category, "is_ejare": is_ejare,
                                   "file_errors": file_crawl.file_errors})
             except Exception as e:
                 logger.error(f"failed cart to crawl. error: {e}")

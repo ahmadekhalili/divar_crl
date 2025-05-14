@@ -45,9 +45,9 @@ class CrawlView(APIView):
         logger.info(f"logger working")
         location_to_search = 'کیانشهر'  # request.data['location_to_search']  # like 'کیانشهر'
         files, errors = crawl_files(category=settings.CATEGORY,
-                                    ejare=settings.EJARE,
-                                    location_to_search, settings.MAX_FILE_CRAWL,
-                                    test_manualy_card_selection=settings.TEST_MANUAL_CARD_SELECTION)
+                                    is_ejare=settings.IS_EJARE,
+                                    location_to_search=location_to_search, max_files=settings.MAX_FILE_CRAWL,
+                                    test_manual_card_selection=settings.TEST_MANUAL_CARD_SELECTION)
         unique_titles, unique_files = [], []
         for file in files:  # field unique validation only done when save file singular (so we have to validate here)
             if file['title'] not in unique_titles:

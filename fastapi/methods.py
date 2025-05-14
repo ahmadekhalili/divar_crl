@@ -14,7 +14,7 @@ import urllib.parse
 import environ
 import os
 import json
-
+from datetime import datetime
 import logging
 from log_handler import init_logging
 init_logging()    # should import before critical local imports. now can use logging.ge..
@@ -126,6 +126,9 @@ async def save_to_mongodb(data: Dict[str, Any], filecrawl):  # dont sames multip
 
         if data.get("image_srcs"):  # upload to the hard and set image_paths
             data["image_paths"] = await upload_and_get_image_paths(data["image_srcs"], data["uid"])
+
+        now = datetime.utcnow()
+        data["created_at"] = now
 
         logger.debug("Starting save_to_mongodb for redis_record: %r", data)
         # 2. Validate & normalize with Pydantic

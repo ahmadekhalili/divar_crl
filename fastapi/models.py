@@ -1,6 +1,8 @@
 from pydantic import BaseModel, AnyHttpUrl, Field, validator
 from typing import List, Dict, Optional
 
+from datetime import datetime
+
 
 # ─── mongo fields ────────────────────────
 class ApartmentItem(BaseModel):  # 'category' has different db so dont save here as field
@@ -33,6 +35,9 @@ class ApartmentItem(BaseModel):  # 'category' has different db so dont save here
     description: Optional[str] = Field("")
     agency: Optional[str] = Field("")
     url: str
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
 
     @validator("phone")
     def phone_must_be_positive(cls, v):
