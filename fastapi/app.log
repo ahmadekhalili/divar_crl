@@ -1,9 +1,0 @@
-2025-05-10 15:12:06,378 — myapp — INFO — 22222222222222
-2025-05-10 15:13:50,369 — myapp — INFO — 22222222222222
-2025-05-10 15:13:50,424 — myapp — ERROR — Could not connect to MongoDB
-2025-05-10 15:20:59,334 — fastapi — INFO — 22222222222222
-2025-05-10 15:20:59,421 — fastapi — ERROR — Could not connect to MongoDB. error: 'NoneType' object has no attribute 'info'
-2025-05-10 15:22:47,952 — fastapi — INFO — 22222222222222
-2025-05-10 15:22:47,997 — fastapi — ERROR — Could not inser files in mongo db. error: Invalid document {'file_uid': 'test123', 'phone': None, 'title': 'My Test File', 'metraj': '', 'age': '', 'otagh': '', 'total_price': '', 'price_per_meter': '', 'floor_number': '', 'general_features': [], 'features': [], 'image_srcs': [], 'image_paths': [], 'specs': {}, 'description': '', 'url': AnyHttpUrl('http://example.com/resource'), '_id': ObjectId('681f3e0fadf51c9cb9b9c571')} | cannot encode object: AnyHttpUrl('http://example.com/resource'), of type: <class 'pydantic.networks.AnyHttpUrl'>
-2025-05-10 15:24:10,405 — fastapi — INFO — 22222222222222
-2025-05-11 07:28:13,708 — fastapi — INFO — post requested sended successfully to fastapi: create_files

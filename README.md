@@ -12,9 +12,15 @@ db.createUser({
     roles: [ { role: "readWrite", db: "divar" } ]
   })
 
+docker run -d --name redis -p 6379:6379 redis:6.2  # install redis insite
 
-# setup:
-.env structure:
+- run postgres (localhost, 5432)
+- run mongo (localhost, default port)
+- run redis (localhost, 6379)
+- run fastapi (8001).
+
+## setup:
+### .env:
 ```
 TEST_RESERVATION=True  # if be True, last submit button will not be pressed (used for test environments)
 SECURE_SSL_REDIRECT=False  # False in test environments without ssl domain
@@ -44,13 +50,56 @@ MONGO_USER_PASS=a13431343
 MONGO_DBNAME=divar
 MONGO_SOURCE=admin
 MONGO_HOST=127.0.0.1
-screenshot_image_path=media/file_{uid}/file_images
+SCREENSHOT_IMAGE_PATH=media/file_{uid}/file_images
 screenshot_map_path=media/file_{uid}/file_mapes
 ```
 
-docker run -d --name redis -p 6379:6379 redis:6.2  # install redis insite
 
-- run mongo
-- run postgres
-- run fastapi (8001)
-- fill .env
+### settings.py
+APARTMENT_EJARE_ZAMIN = "https//:..."
+CATEGORY = "apartment"  # can be 'apartment', 'zamin_kolangy', 'vila'
+EJARE = True
+TEST_MANUAL_CARD_SELECTION = None
+
+**APARTMENT_EJARE_ZAMIN:**
+apartment and ejare and zamin saves in different dbs. you has specify to crawl each of them by specify settings.APARTMENT_EJARE_ZAMIN. it is also possible to set files only contain images or only videos or no images ... here.
+
+**CATEGORY:**
+set CATEGORY based on APARTMENT_EJARE_ZAMIN selection.
+
+**EJARE:**
+can be True, False    # if True, get ejare houses (vadie, ejare atts added in same table)
+
+**TEST_MANUAL_CARD_SELECTION:**
+to test specefic file crawling in divar, set settings.TEST_MANUAL_CARD_SELECTION, or `None` in production and pass to crawl_files. structure: `[(file_uid, file_url)]`
+
+
+
+## developer section section
+notes:
+- dont change fastapi roots. to upload file images in fastapi, django media dir calculate from one back of fastapi dir .
+
+
+### why not reraise
+why not **reraise** for upstream?
+```
+def open_map(self):
+    try:
+        ...
+    except Exception as e:
+        logger_file.error(f"failed opening the map of the file. error: {e}")
+        self.file.file_errors.append(f"failed opening the map of the file.")
+        raise      # reraise for upstream (should stop map crawling)
+
+
+try:
+    map_opended = run_modules.open_map()
+    canvas = driver.find_element(By.CSS_SELECTOR, "canvas.mapboxgl-canvas")
+            logger_file.info(f"bool map's canvas: {bool(canvas)}")
+    ...
+except Exception as e:    
+    message = f"Exception in map section. error: {e}"
+    logger_file.error(message)
+    self.file_errors.append(f"Some Fails in map section.")
+```
+unexpected happend here, we dont want raise two time for just open_map

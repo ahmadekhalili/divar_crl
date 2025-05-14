@@ -8,7 +8,7 @@ import os
 import environ
 import logging
 
-from .methods import upload_and_get_image_paths
+from .methods import sync_upload_and_get_image_paths
 from .mongo_client import get_mongo_db, ConnectionFailure
 
 env = environ.Env()
@@ -30,7 +30,7 @@ class CreateListSerializer(serializers.ListSerializer):
 
 class FileMongoSerializer(serializers.Serializer):
     """
-    Serializer for FileCrawl.file dicts, ready to be persisted to MongoDB.
+    Serializer for Aparment.file dicts, ready to be persisted to MongoDB.
     """
 
     # ─── Numeric / Scalar fields ──────────────────────────────────────────────
@@ -76,7 +76,7 @@ class FileMongoSerializer(serializers.Serializer):
             logger_file.info(f"validating 'image_srcs' in serializer. total numbers: {len(data.get('image_srcs'))}, like: {data.get('image_srcs')[0]}")
             image_paths = []
             if data.get('image_srcs'):
-                image_paths = upload_and_get_image_paths(data.get('image_srcs'),
+                image_paths = sync_upload_and_get_image_paths(data.get('image_srcs'),
                                                          file_number=FileMongoSerializer.get_file_number(get_mongo_db(), 'file'))
                 data['image_paths'] = image_paths
         return data

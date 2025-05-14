@@ -17,3 +17,4 @@ scipy
 pymongo
 python-dotenv
 django-redis
+concurrent-log-handler  # log in os level, so fastapi and django logd doesnt curropt each other

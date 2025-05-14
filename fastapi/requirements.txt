@@ -7,3 +7,4 @@ pymongo
 uvicorn
 django-environ
 redis
+python-multipart

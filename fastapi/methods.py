@@ -1,66 +1,54 @@
+
+
 from fastapi import HTTPException
 from httpx import AsyncClient, Limits, HTTPError
-from typing import List
+from typing import List, Dict
 from pathlib import Path
 import redis.asyncio as redis
-from logging.handlers import RotatingFileHandler
-import logging
+from pymongo import ReturnDocument
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from redis.exceptions import ResponseError as RedisResponseError
+from typing import Any
 import aiofiles
 import urllib.parse
 import environ
 import os
 import json
 
+import logging
+from log_handler import init_logging
+init_logging()    # should import before critical local imports. now can use logging.ge..
+
+from mongo_client import db
+from models import ApartmentItem
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
 env.read_env(os.path.join(BASE_DIR, '.env'))
 
-
-# 1) Create a rotating file handler in the current directory
-handler = RotatingFileHandler(
-    "app.log",
-    maxBytes=5*1024*1024,  # 5 MB per file
-    backupCount=2          # keep two old log files around
-)
-# 2) Choose a log format
-formatter = logging.Formatter(
-    "%(asctime)s — %(name)s — %(levelname)s — %(message)s"
-)
-handler.setFormatter(formatter)
-
-logger = logging.getLogger("fastapi")
-logger.setLevel(logging.DEBUG)
-logger.addHandler(handler)
-
 r = redis.Redis()
 
-
-async def consume_data():   # always listens to redis and if a record added read and write to mongo
-    stream = 'data_stream'
-    group = 'fastapi_group'
-    consumer_name = 'consumer_1'
-    await r.xgroup_create(stream, group, mkstream=True)
-
-    while True:
-        messages = await r.xreadgroup(group, consumer_name, {stream: '>'}, count=10, block=5000)
-        if messages:
-            for _, entries in messages:
-                for id, entry in entries:
-                    data = json.loads(entry[b'data'])
-                    await save_to_mongodb(data)
-                    await r.xack(stream, group, id)
+card_logger = logging.getLogger('cards')
+logger = logging.getLogger('fastapi')
 
 
-async def upload(
-    client: AsyncClient,
-    url: str,
-    file_uid: str,
-) -> str:
+class FileCrawl:
+    def __init__(self, uid, url):
+        self.uid = uid
+        self.url = url
+        self.file_errors = []
+
+
+async def upload(client: AsyncClient,
+                 url: str,
+                 uid: str) -> str:
     """
     Download `url` with `client`, save into `dest_folder`,
     and return the full URL to access it.
     """
-    dest_folder = env('screenshot_image_path').format(uid=file_uid)
+
+    rel = Path(env('SCREENSHOT_IMAGE_PATH').format(uid=uid))  # it must Path obj
+    dest_folder = BASE_DIR / rel
     # 1) Make the request (streaming supported but for simplicity we load all at once)
     try:
         resp = await client.get(url, timeout=10.0)
@@ -79,15 +67,20 @@ async def upload(
 
     # 4) Write file asynchronously
     file_path = dest_folder / filename
-    async with aiofiles.open(file_path, "wb") as f:
-        await f.write(resp.content)
 
-    return f"{file_path}"   # e.g. "media/file_images/file 3"
+    # 1) Make the request as a stream
+    async with client.stream("GET", url, timeout=10.0) as resp:
+        resp.raise_for_status()
+        async with aiofiles.open(file_path, "wb") as f:  # Write file asynchronously in chunks (prevent high payload in memory)
+            async for chunk in resp.aiter_bytes():
+                await f.write(chunk)
+
+    return str(file_path)   # e.g. "media/file_images/file 3"
 
 
 async def upload_and_get_image_paths(
     urls: List[str],
-    file_uid: str,
+    uid: str,
 ):
     """
     Download each image URL and save it under:
@@ -95,11 +88,11 @@ async def upload_and_get_image_paths(
     Returns a list of **full** URLs pointing at each saved image.
     """
 
-    limits = Limits(max_connections=10, max_keepalive=5)
+    limits = Limits(max_connections=10, max_keepalive_connections=5)
     async with AsyncClient(limits=limits) as client:
         tasks = []
         for url in urls:
-            tasks.append(upload(client, url, file_uid))
+            tasks.append(upload(client, url, uid))
 
         # gather will raise on the first exception by default:
         uploaded_paths = []
@@ -117,3 +110,102 @@ async def upload_and_get_image_paths(
     return uploaded_paths
 
 
+async def save_to_mongodb(data: Dict[str, Any], filecrawl):  # dont sames multiple instance just for log readable (card_logger.info(message_to_write))
+    """
+    Validate incoming `data` dict against ApartmentItem, generate a unique uid
+    if not present, and upsert into MongoDB.
+    """
+    logger.info(f"save_to_mongodb just started. {filecrawl}")
+    try:
+        try:
+            await db.client.server_info()
+        except Exception as e:
+            message = f"Could not connect to MongoDB. error: {e}"
+            logger.error(message)
+            filecrawl.file_errors.append(message)
+
+        if data.get("image_srcs"):  # upload to the hard and set image_paths
+            data["image_paths"] = await upload_and_get_image_paths(data["image_srcs"], data["uid"])
+
+        logger.debug("Starting save_to_mongodb for redis_record: %r", data)
+        # 2. Validate & normalize with Pydantic
+        item = ApartmentItem(**data)
+        logger.info("Validated ApartmentItem; uid=%s, name=%s", item.uid, getattr(item, "title", "<no title>"))
+
+        # 3. Prepare the document for MongoDB
+        doc = item.dict()
+        # Optionally, you can use uid as the MongoDB _id:
+        # doc["_id"] = item.uid
+
+        # 4. Upsert into `file` collection
+        if data['category'] == "apartment":  # item has not category key
+            result = await db.apartment.insert_one(doc)
+        elif data['category'] == "zamin_kolangy":
+            result = await db.zamin_kolangy.insert_one(doc)
+        elif data['category'] == "vila":
+            result = await db.vila.insert_one(doc)
+        logger.info("Inserted new document in mongo db with _id=%s", result.inserted_id)
+        uid, url, file_errors = getattr(filecrawl, 'uid', None), getattr(filecrawl, 'url', None), getattr(filecrawl, 'file_errors', None)
+        symbol = "✅" if not file_errors else "❌"
+        message_to_write = f"{symbol} - (uid={uid}, url={url})  errors: {file_errors}"
+        card_logger.info(message_to_write)
+    except Exception as e:
+        message = f"Failed to save {data.get('category')} to MongoDB. totaly skaped save_to_mongodb func. error: {e}"
+        logger.error(message)
+
+
+async def listen_redis():   # always listens to redis and if a record added read and write to mongo
+    stream = 'data_stream'
+    group = 'fastapi_group'
+    consumer_name = 'fastapi_1'
+
+    try:
+        await r.xgroup_create(stream, group, mkstream=True)
+    except RedisResponseError as e:
+        if "BUSYGROUP" not in str(e):       # BUSYGROUP means group already exists
+            logger.error(f"Could not create or verify Redis group. e: {e}")
+            raise
+
+    while True:
+        try:
+            # get records from redis, add {{consumer_name}} to stream consumers list too
+            messages = await r.xreadgroup(group, consumer_name, {stream: '>'}, count=10, block=5000)
+            if not messages:
+                continue
+
+            logger.debug("Received %d message batch", sum(len(entries) for _, entries in messages))
+            for _, entries in messages:
+                for msg_id, entry in entries:
+                    try:
+                        filecrawl = None   # prevent reference error
+                        data = json.loads(entry[b'data'])  # data is exact type was written to redis. if was list is list, if was dic is dict. it is now dict because in django crawl.add_to_redis we set dict
+                        logger.debug("Processing message %s: %r", msg_id, data)
+                        filecrawl = FileCrawl(uid=data['uid'], url=data['url'])
+                        filecrawl.file_errors = data.pop('file_errors', [])
+                        await save_to_mongodb(data, filecrawl)
+                        await r.xack(stream, group, msg_id)  # sign as proceed message
+                        logger.info("Acknowledged redis message %s", msg_id)
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Invalid JSON in response. entry id: {msg_id}; skipping; error: {e}", )
+                        if filecrawl:
+                            filecrawl.file_errors.append("Invalid JSON in response.")
+                    except Exception as e:
+                        logger.error(f"Error handling message {msg_id}; skipping; errpr: {e}", )
+                        if filecrawl:
+                            filecrawl.file_errors.append("error taking record from redis")
+
+        except Exception:
+            logger.error("Error reading from Redis stream; retrying loop")
+            # small sleep could be added here in production to avoid a tight error loop
+
+
+# ─── Helper to get an auto-incrementing counter ────────────────────────────────
+async def get_file_number(name: str) -> int:
+    """Atomically increment and return a counter from 'counters' collection."""
+    doc = await db.counters.find_one_and_update(
+        {"_id": name},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=ReturnDocument.AFTER
+    )
+    return doc["seq"]

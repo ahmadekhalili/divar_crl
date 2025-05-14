@@ -2,13 +2,18 @@ import numpy as np
 import random
 import time
 import os
+
+from rest_framework.response import Response
 from scipy.special import expit
 import requests
+import logging
 import redis
 import json
 
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+
+logger = logging.getLogger('web')
 
 
 class HumanMouseMove:
@@ -66,18 +71,35 @@ class HumanMouseMove:
         return actions
 
 
-def upload_and_get_image_paths(urls, file_number):   # upload the image full url to example: /media/file_images/file 1
+def sync_upload_and_get_image_paths(urls, file_number):   # upload the image full url to example: /media/file_images/file 1
     folder = 'file_images'
     sub_folder = f"file {file_number}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        filename = os.path.basename(url.split('?')[0])  # حذف query params
-        path = os.path.join(folder, sub_folder, filename)
-        saved_path = default_storage.save(path, ContentFile(response.content))
-        return path
+    paths = []
+    for url in urls:
+        response = requests.get(url)
+        if response.status_code == 200:
+            filename = os.path.basename(url.split('?')[0])  # حذف query params
+            path = os.path.join(folder, sub_folder, filename)
+            saved_path = default_storage.save(path, ContentFile(response.content))
+            paths.append(path)
     return None
 
 
+def write_by_django(serializer, unique_files, errors):
+    s = serializer(data=unique_files, many=True)
+    if s.is_valid():
+        logger.info(f"for is valid")
+        files = s.save()
+        return Response({'files_saved': len(files), 'files_failed': errors})
+    else:
+        logger.error(f"for is not valid, error: {s.errors}")
+        return Response(s.errors)
+
 def add_to_redis(data):
-    r = redis.Redis()
-    r.xadd('data_stream', {'data': json.dumps(data)})
+    try:
+        r = redis.Redis()
+        logger.info(f"going to write in redis data: {data}")
+        r.xadd('data_stream', {'data': json.dumps(data, ensure_ascii=False)})
+    except Exception as e:
+        logger.error(f"raise error adding file record to the redis. error: {e}")
+        raise   # reraise for upstream workflow

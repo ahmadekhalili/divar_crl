@@ -15,9 +15,9 @@ from .crawl import crawl_files, test_crawl
 from .serializers import FileMongoSerializer
 from .mongo_client import get_mongo_db, ConnectionFailure
 from .crawl_setup import advance_setup, setup
-from .methods import add_to_redis
+from .methods import add_to_redis, write_by_django
 
-logger = logging.getLogger('django')
+logger = logging.getLogger('web')
 
 from pathlib import Path
 from urllib.parse import quote_plus
@@ -44,7 +44,10 @@ class CrawlView(APIView):
     def get(self, request):
         logger.info(f"logger working")
         location_to_search = 'کیانشهر'  # request.data['location_to_search']  # like 'کیانشهر'
-        files, errors = crawl_files(location_to_search, settings.MAX_FILE_CRAWL)
+        files, errors = crawl_files(category=settings.CATEGORY,
+                                    ejare=settings.EJARE,
+                                    location_to_search, settings.MAX_FILE_CRAWL,
+                                    test_manualy_card_selection=settings.TEST_MANUAL_CARD_SELECTION)
         unique_titles, unique_files = [], []
         for file in files:  # field unique validation only done when save file singular (so we have to validate here)
             if file['title'] not in unique_titles:
@@ -54,14 +57,10 @@ class CrawlView(APIView):
         try:
             if unique_titles:
                 logger.info(f"--all crawled files: {len(unique_titles)}, duplicates: {len(files)-len(unique_titles)}")
-                s = FileMongoSerializer(data=unique_files, many=True)
-                if s.is_valid():
-                    logger.info(f"for is valid")
-                    files = s.save()
-                    return Response({'files_saved': len(files), 'files_failed': errors})
-                else:
-                    logger.error(f"for is not valid, error: {s.errors}")
-                    return Response(s.errors)
+                if not settings.WRITE_REDIS_MONGO:  # of was true write to redis&mongo in crawl.py asynch
+                    write_by_django(FileMongoSerializer, unique_files, errors)  # sync writes
+                return Response(f"cards successfully was writes")
+
             else:
                 logger.info(f"there isn't any unique titles.")
                 return Response({'files_failed': errors})
