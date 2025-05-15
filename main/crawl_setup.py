@@ -46,6 +46,7 @@ def advance_setup():
     options = uc.ChromeOptions()
 
     options.binary_location = env('CHROME_PATH1')
+    #options.add_argument("--headless")
     #options.add_argument(f"user-data-dir={env('CHROME_PROFILE_PATH')}")
     #options.add_argument(f"--profile-directory={env('CHROME_PROFILE_FOLDER')}")
     #profile_path = os.path.join(os.getenv('APPDATA'), 'Local', 'Google', 'Chrome', 'User Data', 'Profile5')

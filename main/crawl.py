@@ -387,7 +387,7 @@ class GetElement:    # get specific element and return its value
             phone_number = None
         return phone_number
 
-    def get_image(self):
+    def get_image(self, element=None):
         image_element = [False, '']
         for i in range(self.retry):
             logger_file.info(f"retry {i+1} for get image element:")
@@ -395,8 +395,12 @@ class GetElement:    # get specific element and return its value
             driver = self.driver
 
             try:
-                logger_file.info(f"Attempting to check for presence of element: {selector}")
-                image_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+                mini_message = " from sub element." if element else ""
+                logger_file.debug(f"Attempting to find the image element{mini_message}.")
+                if element:
+                    image_element = element.find_element(By.CSS_SELECTOR, 'img.kt-image-block__image')
+                else:
+                    image_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
                 logger_file.debug(f"Successfully get PRESENT of the image. in retry {i+1}/{self.retry}")
                 return True, image_element
 
@@ -621,25 +625,103 @@ class GetValue:       # get final values ready to add in file fields
             self.file_crawl.file_errors.append(f"couldn't get 'description' the card.")
             return self.file_crawl.file['description']
 
+    def get_active_slide(self, driver):
+        """
+        Returns the slide element that is currently change (via 'next_button' pressing).
+        each slider has a matrix like: (1, 0, 0, x, y). x changes if press to 'next_button'.
+        for example slider1 (1, 0, 0, 0, y) --next--> (1, 0, 0, -480, y)
+                    slider2 (1, 0, 0, -480, y) -next->(1, 0, 0, 0, y)
+        with this we can identify image went on next with hight accurate.
+        """
+        # 1. Find all slides and the container
+        slides = driver.find_elements(
+            By.CSS_SELECTOR,
+            'div.keen-slider__slide.kt-base-carousel__slide'
+        )
+        logger_file.debug(f"slides numbers founded: {len(slides)}")
+        if not slides:
+            logger_file.warning("No slides found in slider.")
+            return None
+
+        container = driver.find_element(By.CSS_SELECTOR, '.keen-slider')
+        c_rect = driver.execute_script(
+            "return arguments[0].getBoundingClientRect();",
+            container
+        )
+
+        # 2. Precompute slide width (assumed constant)
+        slide_width = driver.execute_script(
+            "return arguments[0].clientWidth;",
+            slides[0]
+        )
+
+        logger_file.info(f"Looking through {len(slides)} slides (width={slide_width}px)")
+
+        for idx, slide in enumerate(slides, start=1):
+            # 3. Get the transform and extract tx
+            transform = driver.execute_script(
+                "return window.getComputedStyle(arguments[0]).transform || 'none';",
+                slide
+            )
+            logger_file.debug(f"[slide {idx}] raw transform: {transform}")
+
+            # default tx=0 for 'none'
+            tx = 0.0
+            if transform != 'none':
+                m = re.match(r"matrix\([^,]+,[^,]+,[^,]+,[^,]+,([-\d.]+),", transform)
+                if m:
+                    tx = float(m.group(1))
+                else:
+                    logger_file.debug(f"[slide {idx}] couldn't parse tx from {transform}")
+
+            logger_file.debug(f"[slide {idx}] translateX = {tx}px")
+
+            # 4. Check that tx is essentially a multiple of slide_width
+            #    (i.e. it's one of the carousel's discrete positions)
+            if slide_width and abs(tx) % slide_width > 1e-3:
+                logger_file.debug(f"[slide {idx}] offset not aligned to slide width, skipping")
+                continue
+
+            # 5. Finally, verify the slide's bounding box sits inside the container
+            s_rect = driver.execute_script(
+                "return arguments[0].getBoundingClientRect();",
+                slide
+            )
+            if (s_rect['left'] >= c_rect['left'] - 1 and
+                    s_rect['right'] <= c_rect['right'] + 1):
+                logger_file.info(f"[slide {idx}] is fully in view — selecting as active")
+                return slide
+            else:
+                logger_file.debug(f"[slide {idx}] partially out of view, skipping")
+
+        logger_file.warning("No active slide found.")
+        return None
+
     def get_image_srcs(self):
         run_tasks = RunModules(self.driver, self)
         get_element = GetElement(self.driver, file=None, retry=2)
+        get_value = GetValue(self.driver)
         image_srcs = set()
         image_success, image_counts = 0, 0  # -1 because always one time finding of next image ('<') fails after reaching galary's end
-
+        parent_image_element = None
         for i in range(settings.MAX_IMAGE_CRAWL):  # crawl maximum MAX_IMAGE_CRAWL images. 1 and sec of image secs for video type. others assume is image. (video checks take at leats 10 sec)
             image_counts += 1
             is_image = [False]  # if a file has not image, dont raise confuse error (reference before assignment below)
+
+            # show current image processing
+            logger_file.info(f"---image {i + 1}, processing...")   # putting here make so easy debugging (shown real iamge processing, not next image)
+            time.sleep(1)
+            # without this, always we have some extra counted images (get_image reference to previouse images because they are sill in doom with same attrs (only transform changes))
+            parent_image_element = get_value.get_active_slide(self.driver)
 
             if i == 0 or i == 1:  # check_is_video add 10 sec delay timeout, so dont run in every loop
                 is_video = run_tasks.check_is_video()
                 if is_video[0]:  # skip if was video (go next image)
                     logger_file.info(f"is_video: {is_video}")
                 else:  # its image, get image
-                    is_image = get_element.get_image()
+                    is_image = get_element.get_image(element=parent_image_element)
             else:
-                is_image = get_element.get_image()
-            time.sleep(1)  # here required, otherwise one image will count as 4-5 image!
+                is_image = get_element.get_image(element=parent_image_element)
             # Get the src attribute
             if is_image[0]:
                 image_url = get_element.get_image_src(is_image[1])
@@ -649,18 +731,17 @@ class GetValue:       # get final values ready to add in file fields
                 else:
                     logger_file.info(f"image src failed getting")
 
-            # try next images even not found image in currnet loop (dont lose others)
+            logger_file.debug(f"image_element boolean: {is_image[0]}")
+            # try next images even not found image in current loop (dont lose others)
             next_image = run_tasks.next_image()
-            time.sleep(1)     # just for test trace
             #end_of_gallery = run_tasks.check_end_of_gallery()  # check via end_of_gallery may is safe and reasonable
-            logger_file.info(f"---image {i + 1}, image_element boolean: {is_image[0]}, next_image bool: {next_image[0]}")
 
             if not next_image[0]:
                 logger_file.info(f"next_image icon not found, reached end of images")
                 break
 
         # in mismatch maybe duplicates or fails
-        message = f"--crawled images: {image_success}/{image_counts}."
+        message = f"--crawled images: {image_success}/{image_counts}. duplicates: {image_success-len(list(image_srcs))}"
         logger_file.info(message)
         if image_success != image_counts:
             self.file_crawl.file_errors.append(message)

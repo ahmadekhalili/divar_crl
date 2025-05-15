@@ -154,12 +154,12 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
-            'level': 'DEBUG',
+            'level': 'INFO',
         },
         'console_file': {
             'class': 'logging.StreamHandler',
             'formatter': 'indented',
-            'level': 'DEBUG',
+            'level': 'INFO',
         },
     },
     'loggers': {
@@ -260,7 +260,7 @@ MONGO_PORT = int(os.environ.get('MONGO_PORT', 27017))
 # It's often useful to construct the URI here as well
 MONGO_URI = f"mongodb://{MONGO_USER_NAME}:{MONGO_USER_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DBNAME}?authSource={MONGO_SOURCE}"
 
-MAX_FILE_CRAWL = 2   # number of files to crawl
+MAX_FILE_CRAWL = 5   # number of files to crawl
 MAX_IMAGE_CRAWL = 50  # skip further images, if a file has more that 20 images
 WRITE_REDIS_MONGO = True   # add each crawled card to redis (enable redis/mongo flow | use django own db)
 
@@ -272,4 +272,4 @@ APARTMENT_EJARE_ZAMIN =  "https://divar.ir/s/tehran/rent-apartment?map_bbox=51.0
 #APARTMENT_EJARE_ZAMIN = "https://divar.ir/s/tehran/buy-old-house?has-photo=true&map_bbox=51.09297561645508%2C35.56098556518555%2C51.6052131652832%2C35.8353385925293&map_interaction=list_only_used&map_place_hash=1%7C%7Cplot-old"
 CATEGORY = "apartment"  # can be 'apartment', 'zamin_kolangy', 'vila' each one in it own mongo table
 IS_EJARE = True             # can be True, False    # if True, get ejare houses (vadie, ejare atts added in same table)
-TEST_MANUAL_CARD_SELECTION = [('test_uid', 'https://divar.ir/v/%D8%A7%D8%AC%D8%A7%D8%B1%D9%87-%D8%A2%D9%BE%D8%A7%D8%B1%D8%AA%D9%85%D8%A7%D9%86-%DB%B6%DB%B0-%D9%85%D8%AA%D8%B1%DB%8C/AakIoH31')]
+TEST_MANUAL_CARD_SELECTION = [('test_uid', 'https://divar.ir/v/%D8%B1%D9%87%D9%86-%D9%88-%D8%A7%D8%AC%D8%A7%D8%B1%D9%87-%D8%A2%D9%BE%D8%A7%D8%B1%D8%AA%D9%85%D8%A7%D9%86-50-%D9%85%D8%AA%D8%B1-%D9%86%D8%A7%D8%B1%D9%85%DA%A9-%DA%AF%D9%84%D8%B3%D8%AA%D8%A7%D9%86/AalI-DVB')]
