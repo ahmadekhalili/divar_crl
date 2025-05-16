@@ -6,7 +6,6 @@ jdatetime
 phonenumbers
 django-phonenumber-field
 django-environ
-pygetwindow
 fake-useragent
 webdriver-manager
 undetected-chromedriver

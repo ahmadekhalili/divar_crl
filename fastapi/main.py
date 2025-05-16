@@ -24,6 +24,9 @@ logger = logging.getLogger('fastapi')
 
 @app.on_event("startup")
 async def start_consumer():  # runs in startup to always runs (keep listening to redis)
+    await db.apartment.create_index("uid", unique=False)
+    await db.zamin_kolangy.create_index("uid", unique=False)
+    await db.vila.create_index("uid", unique=False)  # non‐unique index
     asyncio.create_task(listen_redis())
 
 

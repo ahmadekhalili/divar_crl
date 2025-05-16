@@ -22,8 +22,6 @@ from selenium.common.exceptions import (
     ElementClickInterceptedException
 )
 
-
-import pygetwindow as gw
 from fake_useragent import UserAgent
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium_stealth import stealth
@@ -40,10 +38,10 @@ import time
 import re
 import os
 
-from .crawl_setup import advance_setup
+from .crawl_setup import advance_setup, uc_replacement_setup
 from .serializers import FileMongoSerializer
 from .mongo_client import get_mongo_db
-from .methods import add_to_redis
+from .methods import add_to_redis, set_random_agent
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -705,7 +703,7 @@ class GetValue:       # get final values ready to add in file fields
         image_success, image_counts = 0, 0  # -1 because always one time finding of next image ('<') fails after reaching galary's end
         parent_image_element = None
         for i in range(settings.MAX_IMAGE_CRAWL):  # crawl maximum MAX_IMAGE_CRAWL images. 1 and sec of image secs for video type. others assume is image. (video checks take at leats 10 sec)
-            image_counts += 1
+
             is_image = [False]  # if a file has not image, dont raise confuse error (reference before assignment below)
 
             # show current image processing
@@ -713,7 +711,8 @@ class GetValue:       # get final values ready to add in file fields
             time.sleep(1)
             # without this, always we have some extra counted images (get_image reference to previouse images because they are sill in doom with same attrs (only transform changes))
             parent_image_element = get_value.get_active_slide(self.driver)
-
+            if parent_image_element:
+                image_counts += 1        # if the file has not image at all why we print:"crawled images: 0/1"? it should be "crawled images: 0/0"
             if i == 0 or i == 1:  # check_is_video add 10 sec delay timeout, so dont run in every loop
                 is_video = run_tasks.check_is_video()
                 if is_video[0]:  # skip if was video (go next image)
@@ -1112,7 +1111,7 @@ class Vila(Apartment):  # file data same with apartment
 def crawl_files(category, is_ejare, location_to_search, max_files=None, test_manual_card_selection=None):
     # cards_on_screen just for test. crawl only specific card. its value is a ["a card element (html)"]
     production = False if test_manual_card_selection else True
-    driver = advance_setup()
+    driver = uc_replacement_setup()
     wait = WebDriverWait(driver, 10)
     base_url = "https://divar.ir"
     url = settings.APARTMENT_EJARE_ZAMIN
@@ -1198,6 +1197,7 @@ def crawl_files(category, is_ejare, location_to_search, max_files=None, test_man
                 logger_separation.info("")
                 logger_separation.info("----------")
                 logger.info(f"--going to card {card[0]}. card url: {card[1]}")
+                set_random_agent(driver)  # set random agent every time called
                 driver.get(card[1])
                 time.sleep(2)
                 file_crawl = file_instance(uid=card[0], is_ejare=is_ejare)

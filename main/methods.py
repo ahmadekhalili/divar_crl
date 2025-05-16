@@ -3,6 +3,7 @@ import random
 import time
 import os
 
+from django.conf import settings
 from rest_framework.response import Response
 from scipy.special import expit
 import requests
@@ -94,6 +95,17 @@ def write_by_django(serializer, unique_files, errors):
     else:
         logger.error(f"for is not valid, error: {s.errors}")
         return Response(s.errors)
+
+def set_random_agent(driver):
+    agents = settings.AGENTS
+    rnd = random.randrange(len(agents))
+    ua = agents[rnd]
+    logger.info(f"--change user agent. number: {rnd}")
+    driver.execute_cdp_cmd(
+        "Network.setUserAgentOverride",
+        {"userAgent": ua}
+    )
+
 
 def add_to_redis(data):
     try:
