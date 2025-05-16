@@ -16,7 +16,7 @@ docker run -d --name redis -p 6379:6379 redis:6.2  # install redis insite
 
 - run postgres (localhost, 5432)
 - run mongo (localhost, default port)
-- run redis (localhost, 6379)
+- run redis (localhost, 6379), `docker run -d --name redis -p 6379:6379 -v redis_data:/data redis:6.2 redis-server --bind 0.0.0.0 --port 6379 --protected-mode no`
 - run fastapi (8001).
 
 ## setup:

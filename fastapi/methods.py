@@ -1,5 +1,3 @@
-
-
 from fastapi import HTTPException
 from httpx import AsyncClient, Limits, HTTPError
 from typing import List, Dict
@@ -13,14 +11,23 @@ import aiofiles
 import urllib.parse
 import environ
 import os
+import sys
 import json
 from datetime import datetime
 import logging
 from log_handler import init_logging
+import django
+from django.conf import settings
 init_logging()    # should import before critical local imports. now can use logging.ge..
 
 from mongo_client import db
 from models import ApartmentItem
+
+# Step 1: Add project root (C:\backs\divar_crl) to sys.path
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(BASE_DIR)  # from you can imports from django root, from divar_crl import settings  # ✅ Works because divar_crl/ is now on sys.path
+from divar_crl.settings import DEBUG
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
@@ -161,7 +168,7 @@ async def listen_redis():   # always listens to redis and if a record added read
     stream = 'data_stream'
     group = 'fastapi_group'
     consumer_name = 'fastapi_1'
-
+    error_counts, max_retry = 0, 10  # this prevent from infinit prints of log when delete stream redis for refresh
     try:
         await r.xgroup_create(stream, group, mkstream=True)
     except RedisResponseError as e:
@@ -175,7 +182,7 @@ async def listen_redis():   # always listens to redis and if a record added read
             messages = await r.xreadgroup(group, consumer_name, {stream: '>'}, count=10, block=5000)
             if not messages:
                 continue
-
+            error_counts = 0      # reset on success
             logger.debug("Received %d message batch", sum(len(entries) for _, entries in messages))
             for _, entries in messages:
                 for msg_id, entry in entries:
@@ -187,6 +194,8 @@ async def listen_redis():   # always listens to redis and if a record added read
                         filecrawl.file_errors = data.pop('file_errors', [])
                         await save_to_mongodb(data, filecrawl)
                         await r.xack(stream, group, msg_id)  # sign as proceed message
+                        if DEBUG == False:
+                            await r.xdel(stream, group, msg_id)  # dont fill ram with thousands of records
                         logger.info("Acknowledged redis message %s", msg_id)
                     except json.JSONDecodeError as e:
                         logger.error(f"Invalid JSON in response. entry id: {msg_id}; skipping; error: {e}", )
@@ -198,7 +207,11 @@ async def listen_redis():   # always listens to redis and if a record added read
                             filecrawl.file_errors.append("error taking record from redis")
 
         except Exception:
-            logger.error("Error reading from Redis stream; retrying loop")
+            if error_counts < max_retry:  # else dont fill logs and just wait until stream creates (just restart fastapi)
+                logger.error("Error reading from Redis stream; retrying loop.")
+            if error_counts == 10:
+                logger.error("Max retries exided. restart fastapi.")
+            max_retry += 1
             # small sleep could be added here in production to avoid a tight error loop
 
 

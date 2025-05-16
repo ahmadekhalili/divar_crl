@@ -22,6 +22,15 @@ env = environ.Env()
 env.read_env(os.path.join(BASE_DIR, '.env'))
 logger = logging.getLogger('web')
 
+DRIVERS_CHROMS = [[env('DRIVER_PATH1'), env('CHROME_PATH1')], [env('DRIVER_PATH2'), env('CHROME_PATH2')], [env('DRIVER_PATH3'), env('CHROME_PATH3')]]
+CHOOSE = 0
+def get_driver_chrome():  # return separate driver&chrome for each thread
+    global CHOOSE
+    global DRIVERS_CHROMS
+    tupl = DRIVERS_CHROMS[CHOOSE]
+    CHOOSE += 1
+    return tupl
+
 
 def _apply_stealth_cdp(driver: webdriver.Chrome) -> None:
     """
@@ -44,21 +53,22 @@ def _apply_stealth_cdp(driver: webdriver.Chrome) -> None:
         {"source": script}
     )
 
-def setup():
+def test_setup():
     options = Options()
-    service = Service(driver_path=env('DRIVER_PATH1'))
-    options.binary_location = env('CHROME_PATH1')  # C:\chrome\chrome_browser_134.0.6998.35
-    #options.add_argument("--incognito")  # Enable incognito mode (disable extensions)
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--ignore-certificate-errors')
-    options.add_argument('--dns-prefetch-disable')
-    options.add_argument('--no-proxy-server')
-    options.add_argument('--proxy-bypass-list=*')
-    user_agent = UserAgent().random
-    options.add_argument(f"--user-agent={user_agent}")
+    service = Service(driver_path="/mnt/c/chrome/linux/chromedriver1-linux64/chromedriver")
+    options.binary_location = "/mnt/c/chrome/linux/chrome1-linux64/chrome"
+    # options.add_argument("--incognito")  # Enable incognito mode (disable extensions)
+    # options.add_argument('--no-sandbox')
+    # options.add_argument('--disable-dev-shm-usage')
+    # options.add_argument('--disable-gpu')
+    # options.add_argument('--disable-dev-shm-usage')
+    # options.add_argument('--ignore-certificate-errors')
+    # options.add_argument('--dns-prefetch-disable')
+    # options.add_argument('--no-proxy-server')
+    # options.add_argument('--proxy-bypass-list=*')
+
     driver = webdriver.Chrome(service=service, options=options)
-    #driver.delete_all_cookies()  # Clear all cookies
+    # driver.delete_all_cookies()  # Clear all cookies
     driver.maximize_window()
     return driver
 
@@ -110,9 +120,11 @@ def advance_setup():
 
 
 def uc_replacement_setup():
+    driver_chrome = get_driver_chrome()
+    global CHOOSE
     options = Options()
-    service = Service(executable_path=env('DRIVER_PATH2'))
-    options.binary_location = env('CHROME_PATH2')
+    service = Service(executable_path=driver_chrome[0])
+    options.binary_location = driver_chrome[1]
     # options.add_argument("--headless=new")  # if you need headless
 
     options.add_argument(f"user-data-dir={env('CHROME_PROFILE_PATH')}")
@@ -140,6 +152,7 @@ def uc_replacement_setup():
     options.set_capability("acceptInsecureCerts", True)
     # If you had other caps: options.set_capability("someCap", someValue)
 
+    logger.info(f"selected driver&chrome: {CHOOSE} for run")
     driver = webdriver.Chrome(service=service, options=options)
     # –– 6) CDP stealth patch + window sizing
     _apply_stealth_cdp(driver)

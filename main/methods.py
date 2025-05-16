@@ -100,7 +100,7 @@ def set_random_agent(driver):
     agents = settings.AGENTS
     rnd = random.randrange(len(agents))
     ua = agents[rnd]
-    logger.info(f"--change user agent. number: {rnd}")
+    logger.info(f"user agent number: {rnd} selected.")
     driver.execute_cdp_cmd(
         "Network.setUserAgentOverride",
         {"userAgent": ua}

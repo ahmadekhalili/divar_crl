@@ -703,7 +703,6 @@ class GetValue:       # get final values ready to add in file fields
         image_success, image_counts = 0, 0  # -1 because always one time finding of next image ('<') fails after reaching galary's end
         parent_image_element = None
         for i in range(settings.MAX_IMAGE_CRAWL):  # crawl maximum MAX_IMAGE_CRAWL images. 1 and sec of image secs for video type. others assume is image. (video checks take at leats 10 sec)
-
             is_image = [False]  # if a file has not image, dont raise confuse error (reference before assignment below)
 
             # show current image processing
@@ -717,6 +716,7 @@ class GetValue:       # get final values ready to add in file fields
                 is_video = run_tasks.check_is_video()
                 if is_video[0]:  # skip if was video (go next image)
                     logger_file.info(f"is_video: {is_video}")
+                    image_counts -= 1  # dont count videos
                 else:  # its image, get image
                     is_image = get_element.get_image(element=parent_image_element)
             else:
