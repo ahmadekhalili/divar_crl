@@ -1,3 +1,7 @@
+import logging
+from log_handler import init_logging
+init_logging()    # should import before critical local imports. now can use logging.ge..
+
 from fastapi import HTTPException
 from httpx import AsyncClient, Limits, HTTPError
 from typing import List, Dict
@@ -14,11 +18,8 @@ import os
 import sys
 import json
 from datetime import datetime
-import logging
-from log_handler import init_logging
 import django
 from django.conf import settings
-init_logging()    # should import before critical local imports. now can use logging.ge..
 
 from mongo_client import db
 from models import ApartmentItem

@@ -34,14 +34,16 @@ import logging
 import environ
 import random
 import string
+import threading
 import time
 import re
 import os
 
-from .crawl_setup import advance_setup, uc_replacement_setup
+from .crawl_setup import advance_setup, uc_replacement_setup, set_driver_to_free
 from .serializers import FileMongoSerializer
 from .mongo_client import get_mongo_db
-from .methods import add_to_redis, set_random_agent
+from .redis_client import REDIS
+from .methods import add_to_redis, set_random_agent, set_uid_url_redis, get_uid_url_redis, retry_func
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -51,6 +53,7 @@ logger = logging.getLogger('web')
 logger_separation = logging.getLogger("web_separation")
 logger_file = logging.getLogger('file')
 
+_pop_lock = threading.Lock()
 
 class Retry:
     retry = 2   # one additional times methods runs by itself (to generate real personal exception messages)
@@ -345,7 +348,7 @@ class GetElement:    # get specific element and return its value
     def get_title_from_cardbox(self, card):  # get title from card box (not inside file page)
         try:
             title_element = card.find_element(By.CSS_SELECTOR, "h2.unsafe-kt-post-card__title")
-            logger.info(f"first attempt title_element: {title_element}")
+            logger.info(f"first attempt title_element bool: {bool(title_element)}")
             if not title_element:
                 title_element = card.find_elements(By.CSS_SELECTOR, '.kt-new-post-card__title')
                 logger.info(f"sec attempt title_elements: {title_element}")
@@ -365,7 +368,7 @@ class GetElement:    # get specific element and return its value
     def get_uid(self, url):
         try:
             uid = url.rstrip("/").split("/")[-1]
-            logger.info(f"successfully obtained uid: {uid}")
+            logger.debug(f"successfully obtained uid: {uid}")
             return True, uid
         except Exception as e:
             return False, f"couldn't get uid from card's url. url: {e}"
@@ -414,7 +417,7 @@ class GetElement:    # get specific element and return its value
         for i in range(self.retry):
             try:
                 image_url = image_element.get_attribute('src')
-                logger_file.debug(f"successfully get image src. in retry {i+1}/{self.retry}")
+                logger_file.info(f"successfully get image src. in retry {i+1}/{self.retry}")
                 return True, image_url
             except StaleElementReferenceException as e:
                 logger_file.error(f"error StaleElement getting image's src. wait and retry again. retry {i+1}/{self.retry}")
@@ -1108,28 +1111,29 @@ class Vila(Apartment):  # file data same with apartment
         except Exception as e:
             pass
 
-def crawl_files(category, is_ejare, location_to_search, max_files=None, test_manual_card_selection=None):
+def get_files(location_to_search, max_files=1):
     # cards_on_screen just for test. crawl only specific card. its value is a ["a card element (html)"]
-    production = False if test_manual_card_selection else True
     driver = uc_replacement_setup()
     wait = WebDriverWait(driver, 10)
     base_url = "https://divar.ir"
     url = settings.APARTMENT_EJARE_ZAMIN
+    retry, attempt = 2, 1
     #url = ""
     # video
     #url = "https://divar.ir/s/tehran/buy-apartment?bbox=51.0929756%2C35.5609856%2C51.6052132%2C35.8353386&has-photo=true&has-video=true&map_bbox=51.09297561645508%2C35.56098556518555%2C51.6052131652832%2C35.8353385925293&map_place_hash=1%7C%7Capartment-sell"
-    if production:
-        driver.get(url)     # Load the web page
+    try:
+        driver.get(url)  # Load the web page
         crawl_modules = RunModules(driver)
 
         try:
             crawl_modules.close_map(retries=1)
         except Exception as e:
-            logger.error(f"{e}")       # skip closing if failed
+            logger.info(f"failed in map closing task. skipping.")
 
         try:
             # search box
-            search_input = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 'input.kt-nav-text-field__input')))
+            search_input = wait.until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, 'input.kt-nav-text-field__input')))
             search_input.send_keys(location_to_search)  # type in search box to search
             search_input.send_keys(Keys.ENTER)
             time.sleep(1)
@@ -1138,11 +1142,14 @@ def crawl_files(category, is_ejare, location_to_search, max_files=None, test_man
             last_height = driver.execute_script("return document.body.scrollHeight")
 
             # Scroll down and add all founded card to 'cards'
-            cards = []       # using set() make unordered of cards
+            cards = []  # using set() make unordered of cards
+            unique_cards_counts = 0
             while True:
                 try:
                     card_selector = "article.unsafe-kt-post-card"
-                    wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, card_selector)))  #driver.find_elements(By.CSS_SELECTOR, 'article.kt-post-card')
+                    wait.until(EC.presence_of_element_located(
+                        (By.CSS_SELECTOR,
+                         card_selector)))  # driver.find_elements(By.CSS_SELECTOR, 'article.kt-post-card')
                     # 2. Find all card elements now that we know they exist
                     cards_on_screen = driver.find_elements(By.CSS_SELECTOR, card_selector)
                     logger.info(f"cards_on_screen: {len(cards_on_screen)}")
@@ -1150,6 +1157,7 @@ def crawl_files(category, is_ejare, location_to_search, max_files=None, test_man
                     logger.error(f"Fails getting cards via article.kt-post-card element. error: {e}")
                     cards_on_screen = []
                 get_element = GetElement(driver)
+                urls_of_cards = [url for uid, url in cards]
                 for card in cards_on_screen:
                     sucs_title = get_element.get_title_from_cardbox(card)
                     sucs_url = get_element.get_url_from_cardbox(card)
@@ -1165,13 +1173,13 @@ def crawl_files(category, is_ejare, location_to_search, max_files=None, test_man
                     else:
                         logger.error(f"Could not retrieve title and url of the card. title error: {sucs_title}, url error: {sucs_url}")
 
-                    if sucs_url[0] and sucs_title[0] and sucs_url[1] not in cards and \
+                    if sucs_url[0] and sucs_title[0] and sucs_url[1] not in urls_of_cards and \
                             (not max_files or len(cards) < max_files):  # Note '<=' is false!
                         # absolute_url = urljoin(base_url, sucs_url[1])
                         cards.append((sucs_uid[1], sucs_url[1]))  # sucs_url[1] is already full url
-                    else:                   # some carts are blank, required to skip them
+                    else:  # some carts are blank, required to skip them
                         pass
-
+                unique_cards_counts =+ set_uid_url_redis(cards)
                 if max_files > 11:
                     # Scroll down to the bottom of the page
                     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -1183,82 +1191,72 @@ def crawl_files(category, is_ejare, location_to_search, max_files=None, test_man
                         break
                     last_height = new_height
                 else:
-                    break   # skip scroll and exit while loop
+                    break  # skip scroll and exit while loop
 
-            logger.info(f"cards finds: {len(cards)}")
-            files, errors = [], {}    # if some files not crawled, trace them in error list
+            logger.info(f"---cards finds: {unique_cards_counts}")
+        except Exception as e:
+            logger.error(f"failed add to search box and so on. error: {e}")
+
+    except Exception as e:
+        logger.error(f"failed running driver. retry: {attempt}/{retry}. error: {e}")
+
+    finally:
+        driver.quit()  # dont need reraise to came here
+        set_driver_to_free()
+        logger.info(f"---card finder quited clean.")
+
+
+@retry_func(max_attempts=5, delay=20, fail_message_after_attempts='max retry. going to terminate thread. cards not founds')
+def crawl_file():  # each thread runs separatly
+    category = settings.CATEGORY
+    is_ejare = settings.IS_EJARE
+    is_saved_to_redis = False
+    errors = []
+    with _pop_lock:
+        uid, url = get_uid_url_redis()
+    if url and uid:
+        driver = None
+        try:
+            driver = uc_replacement_setup(uid)
+
             if category == 'apartment':
                 file_instance = Apartment
             elif category == 'zamin_kolangy':
                 file_instance = ZaminKolangy
             elif category == 'vila':
                 file_instance = Vila
-            for i, card in enumerate(cards):
-                logger_separation.info("")
-                logger_separation.info("----------")
-                logger.info(f"--going to card {card[0]}. card url: {card[1]}")
-                set_random_agent(driver)  # set random agent every time called
-                driver.get(card[1])
-                time.sleep(2)
-                file_crawl = file_instance(uid=card[0], is_ejare=is_ejare)
-                logger.info(f"selected file_crawl category {category}: {file_crawl}")
-                try:
-                    file_crawl.file['url'] = card[1]  # save url before crawl others
-                    file_crawl.file['uid'] = card[0]
-                    file_crawl.run(driver)  # fills .file
-
-                    if settings.WRITE_REDIS_MONGO:  # is_ejare should no conflics with 'ejare' price inside redis
-                        add_to_redis({**file_crawl.file, "category": category, "is_ejare": is_ejare, "file_errors": file_crawl.file_errors})
-                except Exception as e:
-                    logger.error(f"failed cart to crawl. error: {e}")
-                    errors['cart_url'] = str(e)
-                files.append(file_crawl.file)
-
-                driver.back()
-                time.sleep(2)
-
-        except Exception as e:
-            raise e
-
-        finally:
-            driver.quit()
-
-    elif test_manual_card_selection:
-        cards ,category = test_manual_card_selection, 'apartment'
-
-        logger.info(f"test env. cards finds: {len(cards)}")
-        files, errors = [], {}  # if some files not crawled, trace them in error list
-        if category == 'apartment':
-            file_instance = Apartment
-        elif category == 'zamin_kolangy':
-            file_instance = ZaminKolangy
-        elif category == 'vila':
-            file_instance = Vila
-        for i, card in enumerate(cards):
             logger_separation.info("")
             logger_separation.info("----------")
-            logger.info(f"--going to card {card[0]}. card url: {card[1]}")
-            driver.get(card[1])
+            logger_file.info(f"--going to card {uid}. card url: {url}")
+            set_random_agent(driver)  # set random agent every time called
+            driver.get(url)
             time.sleep(2)
-            file_crawl = file_instance(uid=card[0], is_ejare=is_ejare)
-            logger.info(f"selected file_crawl category {category}: {file_crawl}")
+            file_crawl = file_instance(uid=uid, is_ejare=is_ejare)
+            logger_file.info(f"selected file_crawl category {category}: {file_crawl}")
             try:
-                file_crawl.file['url'] = card[1]  # save url before crawl others
-                file_crawl.file['uid'] = card[0]
+                file_crawl.file['url'] = url  # save url before crawl others
+                file_crawl.file['uid'] = uid
                 file_crawl.run(driver)  # fills .file
 
-                if settings.WRITE_REDIS_MONGO:  # is_ejare should no conflics with 'ejare' price inside redis
+                if settings.WRITE_REDIS_MONGO:  # is_ejare should no conflicts with 'ejare' price inside redis
                     add_to_redis({**file_crawl.file, "category": category, "is_ejare": is_ejare,
                                   "file_errors": file_crawl.file_errors})
+                    is_saved_to_redis = True
             except Exception as e:
-                logger.error(f"failed cart to crawl. error: {e}")
-                errors['cart_url'] = str(e)
-            files.append(file_crawl.file)
+                logger_file.error(f"failed cart to crawl. error: {e}")
+                errors.append(f"failed cart to crawl. error: {e}")
+                raise
 
-            driver.back()
-            time.sleep(2)
-
-    return (files, errors)
+            return True   # for retry functionality
+        except Exception as e:
+            errors.append(f"Failed totally. error: {e}")
+        finally:
+            if driver:
+                driver.quit()
+                set_driver_to_free(uid, is_saved_to_redis, errors)
+                logger.info(f"card crawler quited clean.")
+    else:
+        logger_file.info(f"cards list is blank. wait to find by card finder..")
 
 
 def test_crawl(url="https://divar.ir"):

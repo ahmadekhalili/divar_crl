@@ -151,6 +151,13 @@ LOGGING = {
             'formatter': 'indented',
             'encoding': 'utf-8',
         },
+        'driver_handler': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'driver.log'),
+            'formatter': 'verbose',
+            'encoding': 'utf-8',
+        },
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
@@ -182,6 +189,11 @@ LOGGING = {
         },
         'file': {     # show logs when crawl inside a file (shows with additional '  ' space)
             'handlers': ['file_file', 'console_file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'driver': {  # show logs only for driver controlling (unctrolable in multi thread logs)
+            'handlers': ['driver_handler', 'console'],
             'level': 'DEBUG',
             'propagate': False,
         },
@@ -302,13 +314,14 @@ AGENTS = [
     "Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:115.0) Gecko/20100101 Firefox/115.0",
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 OPR/106.0.0.0",
 ]
+RETRY_FOR_DRIVER = 2      # retry numbers to attempt and wait to find free driver and exit the card crawler thread?
 
 MAX_FILE_CRAWL = 5   # number of files to crawl
 MAX_IMAGE_CRAWL = 50  # skip further images, if a file has more that 20 images
 WRITE_REDIS_MONGO = True   # add each crawled card to redis (enable redis/mongo flow | use django own db)
 
 # apartment, ejare
-APARTMENT_EJARE_ZAMIN =  "https://divar.ir/s/tehran/rent-apartment?has-photo=true&map_bbox=51.09297561645508%2C35.56098556518555%2C51.6052131652832%2C35.8353385925293&map_interaction=list_only_used&map_place_hash=1%7C%7Capartment-rent"
+#APARTMENT_EJARE_ZAMIN =  "https://divar.ir/s/tehran/rent-apartment?has-photo=true&map_bbox=51.09297561645508%2C35.56098556518555%2C51.6052131652832%2C35.8353385925293&map_interaction=list_only_used&map_place_hash=1%7C%7Capartment-rent"
 # apartment, forosh
 APARTMENT_EJARE_ZAMIN =  "https://divar.ir/s/tehran/buy-apartment?has-photo=true&map_bbox=51.09297561645508%2C35.56098556518555%2C51.6052131652832%2C35.8353385925293&map_interaction=list_only_used&map_place_hash=1%7C%7Capartment-sell"
 # vila, ejare
@@ -318,5 +331,5 @@ APARTMENT_EJARE_ZAMIN =  "https://divar.ir/s/tehran/buy-apartment?has-photo=true
 # zamin&kolangy:
 #APARTMENT_EJARE_ZAMIN = "https://divar.ir/s/tehran/buy-old-house?has-photo=true&map_bbox=51.09297561645508%2C35.56098556518555%2C51.6052131652832%2C35.8353385925293&map_interaction=list_only_used&map_place_hash=1%7C%7Cplot-old"
 CATEGORY = "apartment"  # can be 'apartment', 'zamin_kolangy', 'vila' each one in it own mongo table
-IS_EJARE = True             # can be True, False    # if True, get ejare houses (vadie, ejare atts added in same table)
+IS_EJARE = False             # can be True, False    # if True, get ejare houses (vadie, ejare atts added in same table)
 TEST_MANUAL_CARD_SELECTION = None# [('test_uid', 'https://divar.ir/v/%D8%B1%D9%87%D9%86-%D9%88-%D8%A7%D8%AC%D8%A7%D8%B1%D9%87-%D8%A2%D9%BE%D8%A7%D8%B1%D8%AA%D9%85%D8%A7%D9%86-50-%D9%85%D8%AA%D8%B1-%D9%86%D8%A7%D8%B1%D9%85%DA%A9-%DA%AF%D9%84%D8%B3%D8%AA%D8%A7%D9%86/AalI-DVB')]

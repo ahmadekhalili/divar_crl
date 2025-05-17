@@ -1,20 +1,25 @@
+from django.conf import settings
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from rest_framework.response import Response
+
 import numpy as np
 import random
 import time
 import os
-
-from django.conf import settings
-from rest_framework.response import Response
 from scipy.special import expit
 import requests
 import logging
 import redis
 import json
+import functools
 
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
+from .redis_client import REDIS
 
 logger = logging.getLogger('web')
+logger_separation = logging.getLogger("web_separation")
+logger_file = logging.getLogger('file')
+
 
 
 class HumanMouseMove:
@@ -86,6 +91,25 @@ def sync_upload_and_get_image_paths(urls, file_number):   # upload the image ful
     return None
 
 
+def retry_func(max_attempts=2, delay=20, fail_message_after_attempts='', loger=logger):
+    """Retry decorator for acquiring Chrome driver in a thread-safe way."""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_attempts):
+                loger.info(f"try run {func}, attempt: {attempt+1}/{max_attempts}")
+                result = func(*args, **kwargs)
+                if result:
+                    return result
+                loger.debug(f"retry again, result was: {result}")
+                time.sleep(delay)
+            if fail_message_after_attempts:
+                loger.info(f"{fail_message_after_attempts} after {max_attempts} attempts.")
+            return None
+        return wrapper
+    return decorator
+
+
 def write_by_django(serializer, unique_files, errors):
     s = serializer(data=unique_files, many=True)
     if s.is_valid():
@@ -95,6 +119,7 @@ def write_by_django(serializer, unique_files, errors):
     else:
         logger.error(f"for is not valid, error: {s.errors}")
         return Response(s.errors)
+
 
 def set_random_agent(driver):
     agents = settings.AGENTS
@@ -109,9 +134,39 @@ def set_random_agent(driver):
 
 def add_to_redis(data):
     try:
-        r = redis.Redis()
         logger.info(f"going to write in redis data: {data}")
-        r.xadd('data_stream', {'data': json.dumps(data, ensure_ascii=False)})
+        REDIS.xadd('data_stream', {'data': json.dumps(data, ensure_ascii=False)})
     except Exception as e:
         logger.error(f"raise error adding file record to the redis. error: {e}")
         raise   # reraise for upstream workflow
+
+
+def set_uid_url_redis(cards, data_key='uid_url_list', uid_set_key='unique_uid'):
+    """
+    cards: list of (title, url)
+    data_key: in db like. title_url_list: 1) "Title 1|https://example.com/page1"
+                                          2) "Title 2|https://example.com/page2"
+    url_set_key: Redis set to track unique uids. is like: unique_uid: 1) "uid1" 2) "uid2"
+    Important: unique_uid remains untouched, but uid_url_list popes by card crawler thread (after crawled)
+    """
+    added_count = 0
+    duplicate_count = 0
+
+    for uid, url in cards:
+        if REDIS.sadd(uid_set_key, uid):  # Returns 1 if added (unique), 0 if already exists
+            REDIS.rpush(data_key, f"{uid}|{url}")  # or use json.dumps({...})
+            added_count += 1
+        else:
+            duplicate_count += 1
+
+    logger.debug(f"Added cards to redis: {added_count}, duplicates not added: {duplicate_count}")
+    return added_count
+
+def get_uid_url_redis():  # return None, None in blank is required
+    uid, url = None, None
+    item = REDIS.lpop("uid_url_list")  # pops oldest item (left-most), rpop newest
+    if item:
+        uid, url = item.split("|", 1)  # max split 1
+        remaining = REDIS.llen("uid_url_list")  # get remaining number of items
+        logger_file.info(f"uid & url popped successfully from redis to start crawl. remains cards in db: {remaining}")
+    return uid, url

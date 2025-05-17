@@ -11,11 +11,11 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 import logging
 
-from .crawl import crawl_files, test_crawl
-from .crawl_setup import advance_setup, test_setup
+from .crawl import get_files, test_crawl
+from .crawl_setup import advance_setup, test_setup, uc_replacement_setup
 from .serializers import FileMongoSerializer
 from .mongo_client import get_mongo_db, ConnectionFailure
-from .methods import add_to_redis, write_by_django
+from .methods import add_to_redis, write_by_django, set_uid_url_redis
 
 logger = logging.getLogger('web')
 
@@ -32,36 +32,16 @@ environ.Env.read_env(os.path.join(Path(__file__).resolve().parent.parent.parent,
 def test(request):
     #get_mongo_db()['test'].insert_one({'message': 'hi2'})
     url = "https://divar.ir/s/tehran/buy-apartment"
-    driver = test_setup()
+    driver = uc_replacement_setup()
     driver.get(url)  # Load the web page
     #test_crawl(url="https://divar.ir/v/%D9%81%D8%B1%D9%88%D8%B4-%D8%A2%D9%BE%D8%A7%D8%B1%D8%AA%D9%85%D8%A7%D9%86-%DB%B1%DB%B0%DB%B4-%D9%85%D8%AA%D8%B1%DB%8C-%DB%B2-%D8%AE%D9%88%D8%A7%D8%A8%D9%87-%D8%AF%D8%B1-%D9%86%D8%B8%D8%A7%D9%85-%D8%A2%D8%A8%D8%A7%D8%AF/AafYQfSu")
-
-    return HttpResponse(f"divar crawled. title: {driver.title}")
+    #set_uid_url_redis([('uid1', 'qweqwe'), ('uid1', 'tretert')])
+    return HttpResponse(f"success")
 
 
 class CrawlView(APIView):
     def get(self, request):
         logger.info(f"logger working")
         location_to_search = 'کیانشهر'  # request.data['location_to_search']  # like 'کیانشهر'
-        files, errors = crawl_files(category=settings.CATEGORY,
-                                    is_ejare=settings.IS_EJARE,
-                                    location_to_search=location_to_search, max_files=settings.MAX_FILE_CRAWL,
-                                    test_manual_card_selection=settings.TEST_MANUAL_CARD_SELECTION)
-        unique_titles, unique_files = [], []
-        for file in files:  # field unique validation only done when save file singular (so we have to validate here)
-            if file['title'] not in unique_titles:
-                cleaned_file = {key: value for key, value in file.items() if value is not None}
-                unique_titles.append(cleaned_file['title'])
-                unique_files.append(cleaned_file)
-        try:
-            if unique_titles:
-                logger.info(f"--all crawled files: {len(unique_titles)}, duplicates: {len(files)-len(unique_titles)}")
-                if not settings.WRITE_REDIS_MONGO:  # of was true write to redis&mongo in crawl.py asynch
-                    write_by_django(FileMongoSerializer, unique_files, errors)  # sync writes
-                return Response(f"cards successfully was writes")
-
-            else:
-                logger.info(f"there isn't any unique titles.")
-                return Response({'files_failed': errors})
-        except Exception as e:
-            return Response(f"Unexpected exception: {e}")
+        get_files(location_to_search=location_to_search, max_files=settings.MAX_FILE_CRAWL)
+        return Response({"status:": "program returned"})

@@ -1,8 +1,11 @@
+from django .conf import settings
+
 import logging
 import os
 import random
 import time
 import environ
+import threading
 from pathlib import Path
 
 from selenium import webdriver
@@ -14,22 +17,61 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
-from .methods import HumanMouseMove
+from .methods import HumanMouseMove, retry_func
+from .serializers import logger_file
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env()
 env.read_env(os.path.join(BASE_DIR, '.env'))
 logger = logging.getLogger('web')
+driver_logger = logging.getLogger('driver')
 
-DRIVERS_CHROMS = [[env('DRIVER_PATH1'), env('CHROME_PATH1')], [env('DRIVER_PATH2'), env('CHROME_PATH2')], [env('DRIVER_PATH3'), env('CHROME_PATH3')]]
-CHOOSE = 0
-def get_driver_chrome():  # return separate driver&chrome for each thread
-    global CHOOSE
-    global DRIVERS_CHROMS
-    tupl = DRIVERS_CHROMS[CHOOSE]
-    CHOOSE += 1
-    return tupl
+def load_drivers(driver_counts):
+    for i in range(1, driver_counts + 1):
+        pass
+
+
+lock_thread = threading.Lock()
+DRIVERS_CHROMS = [{'uid': None, 'driver_path': env('DRIVER_PATH1'), 'chrome_path': env('CHROME_PATH1')},
+                  {'uid': None, 'driver_path': env('DRIVER_PATH2'), 'chrome_path': env('CHROME_PATH2')},
+                  {'uid': None, 'driver_path': env('DRIVER_PATH3'), 'chrome_path': env('CHROME_PATH3')},
+                  {'uid': None, 'driver_path': env('DRIVER_PATH4'), 'chrome_path': env('CHROME_PATH4')},
+                  {'uid': None, 'driver_path': env('DRIVER_PATH5'), 'chrome_path': env('CHROME_PATH5')},]
+
+driver_logger.debug(f"content of DRIVERS_CHROMS: {DRIVERS_CHROMS}")
+@retry_func(max_attempts=settings.RETRY_FOR_DRIVER, delay=20, fail_message_after_attempts='No free driver', loger=driver_logger)
+def get_driver_chrome(uid=None):
+    """Try to acquire a free driver in a thread-safe way. Return paths or False if none."""
+    if not uid:
+        uid = "main_thread"
+    with lock_thread:
+        for item in DRIVERS_CHROMS:
+            if not item.get('uid'):
+                item['uid'] = uid
+                driver_logger.info(f"Successfully obtained driver for thread uid: {uid}")
+                return item['driver_path'], item['chrome_path']
+        else:
+            driver_logger.info("All drivers are busy, will retry...")
+            return False
+
+
+#@retry_func(max_attempts=1)  # dont want to show "Not found any driver to " additionally
+def set_driver_to_free(uid=None, is_saved_to_redis=None, errors=None):  # for main thread is_saved_to_redis should be None
+    if not uid:
+        uid = "main_thread"
+    message_status = "Successfully saved to Redis" if is_saved_to_redis else "Failed to save to Redis" if is_saved_to_redis is False else ""
+    with lock_thread:
+        for item in DRIVERS_CHROMS:
+            if item.get('uid'):
+                item['uid'] = None
+                driver_logger.info(f"{message_status} and exit. set driver for free uid: {uid}. errors: {errors}")
+                break
+        else:      # if not found any item.get('uid') in whole lists
+            driver_logger.info(f"Not found any driver to free up. {message_status} (uid={uid}). errors: {errors}")
+        free_drivers_count = len([True for item in DRIVERS_CHROMS if item['uid'] is None])
+        driver_logger.info(f"Totally free drivers: {free_drivers_count}/{len(DRIVERS_CHROMS)}")
+        return True   # required for @retry_func functionality
 
 
 def _apply_stealth_cdp(driver: webdriver.Chrome) -> None:
@@ -119,22 +161,21 @@ def advance_setup():
     return driver
 
 
-def uc_replacement_setup():
-    driver_chrome = get_driver_chrome()
-    global CHOOSE
+def uc_replacement_setup(uid=None):
+    driver_chrome = get_driver_chrome(uid)
     options = Options()
     service = Service(executable_path=driver_chrome[0])
     options.binary_location = driver_chrome[1]
-    # options.add_argument("--headless=new")  # if you need headless
+    options.add_argument("--headless=new")  # if you need headless
 
-    options.add_argument(f"user-data-dir={env('CHROME_PROFILE_PATH')}")
-    options.add_argument(f"--profile-directory={env('CHROME_PROFILE_FOLDER')}")
+    #options.add_argument(f"user-data-dir={env('CHROME_PROFILE_PATH')}")
+    #options.add_argument(f"--profile-directory={env('CHROME_PROFILE_FOLDER')}")
     # profile_path = os.path.join(os.getenv('APPDATA'), 'Local', 'Google', 'Chrome', 'User Data', 'Profile5')
     # options.add_argument(f"user-data-dir={profile_path}")
     # options.add_argument("--disable-extensions")
     options.add_argument('--no-sandbox')
-    # options.add_argument('--disable-dev-shm-usage')
-    # options.add_argument('--disable-gpu')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
 
     # –– 2) Anti-detection flags
     options.add_argument("--disable-blink-features=AutomationControlled")
@@ -152,7 +193,6 @@ def uc_replacement_setup():
     options.set_capability("acceptInsecureCerts", True)
     # If you had other caps: options.set_capability("someCap", someValue)
 
-    logger.info(f"selected driver&chrome: {CHOOSE} for run")
     driver = webdriver.Chrome(service=service, options=options)
     # –– 6) CDP stealth patch + window sizing
     _apply_stealth_cdp(driver)

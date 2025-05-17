@@ -1,3 +1,7 @@
+import logging
+from log_handler import init_logging
+init_logging()    # should import before critical local imports. now can use logging.ge..
+
 from fastapi import FastAPI, HTTPException
 from typing import List, Dict, Optional
 from bson import ObjectId
@@ -5,10 +9,6 @@ from pathlib import Path
 import environ
 import asyncio
 import os
-
-import logging
-from log_handler import init_logging
-init_logging()    # should import before critical local imports. now can use logging.ge..
 
 from methods import upload_and_get_image_paths, listen_redis
 from mongo_client import db
