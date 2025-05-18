@@ -505,14 +505,34 @@ class GetValue:       # get final values ready to add in file fields
         self.retry = retry
 
     def get_title_of_file(self):
-        try:
-            title = self.driver.find_element(By.CLASS_NAME, 'kt-page-title__title').text.strip()
-            logger.info(f"title crawld: {title}")
-            return title
-        except Exception as e:
-            logger_file.error(f"couldn't get title of the card. error: {e}")
-            self.file_crawl.file_errors.append(f"couldn't get title of the card.")
-            return self.file_crawl.file['title']   # return default (dynamic programming)
+        retry = 5
+        for i in range(retry):
+            try:
+                title = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located((By.CSS_SELECTOR, "h1[class*='page-title__title']"))).text.strip()
+                logger.info(f"title crawld: {title}")
+                return title
+            except StaleElementReferenceException as e:
+                logger_file.error(f"couldn't get title because of stale. wait and retry. error: {e}")
+                if i+1 == retry:
+                    return self.file_crawl.file['title']
+                time.sleep(5)
+            except Exception as e:
+                logger_file.error(f"couldn't get title of the card. refresh page. retry {i+1}/{retry}. error: {e}")
+                self.file_crawl.file_errors.append(f"couldn't get title of the card. refresh page. ")
+                time.sleep(1)
+                self.driver.get(self.file_crawl.file['url'])
+                self.take_Screen_in_title(self.file_crawl.file['uid'], file_name=f"screenshot_in_title_error_retry{i+1}")
+                if i+1 == retry:
+                    return self.file_crawl.file['title']   # return default (dynamic programming)
+
+    def take_Screen_in_title(self, uid, file_name):
+        relative_path = os.path.join(f'file_{uid}', 'file_images')
+        full_path = os.path.join(settings.MEDIA_ROOT, relative_path)
+        os.makedirs(full_path, exist_ok=True)
+
+        filename = f'{file_name}.png'
+        full_filepath = os.path.join(full_path, filename)
+        self.driver.save_screenshot(full_filepath)
 
     def get_metraj_age_oragh(self):
         try:
@@ -1122,6 +1142,8 @@ def get_files(location_to_search, max_files=1):
     # video
     #url = "https://divar.ir/s/tehran/buy-apartment?bbox=51.0929756%2C35.5609856%2C51.6052132%2C35.8353386&has-photo=true&has-video=true&map_bbox=51.09297561645508%2C35.56098556518555%2C51.6052131652832%2C35.8353385925293&map_place_hash=1%7C%7Capartment-sell"
     try:
+        if not driver:
+            raise
         driver.get(url)  # Load the web page
         crawl_modules = RunModules(driver)
 
@@ -1198,65 +1220,78 @@ def get_files(location_to_search, max_files=1):
             logger.error(f"failed add to search box and so on. error: {e}")
 
     except Exception as e:
-        logger.error(f"failed running driver. retry: {attempt}/{retry}. error: {e}")
+        logger.error(f"failed running driver. error: {e}")
 
     finally:
-        driver.quit()  # dont need reraise to came here
+        if driver:
+            driver.quit()  # dont need reraise to came here
         set_driver_to_free()
         logger.info(f"---card finder quited clean.")
 
 
-@retry_func(max_attempts=5, delay=20, fail_message_after_attempts='max retry. going to terminate thread. cards not founds')
 def crawl_file():  # each thread runs separatly
     category = settings.CATEGORY
     is_ejare = settings.IS_EJARE
     is_saved_to_redis = False
     errors = []
-    with _pop_lock:
-        uid, url = get_uid_url_redis()
-    if url and uid:
-        driver = None
-        try:
-            driver = uc_replacement_setup(uid)
+    driver = None
+    try:
+        while True:  # now each thread can crawl more cards. after ending previouse return and take from redis and crawl
+            uid, url = get_uid_url_redis()  # wait until 120 sec to arrive new records
+            if url and uid:
+                # open_driver_and_Crawl
+                max_retry = 2
+                try:  # "retry for re crawl the file. attempts: {i + 1}/{max_retry}" f"max retry. going to refetch from redis."
+                    driver = uc_replacement_setup(uid)
 
-            if category == 'apartment':
-                file_instance = Apartment
-            elif category == 'zamin_kolangy':
-                file_instance = ZaminKolangy
-            elif category == 'vila':
-                file_instance = Vila
-            logger_separation.info("")
-            logger_separation.info("----------")
-            logger_file.info(f"--going to card {uid}. card url: {url}")
-            set_random_agent(driver)  # set random agent every time called
-            driver.get(url)
-            time.sleep(2)
-            file_crawl = file_instance(uid=uid, is_ejare=is_ejare)
-            logger_file.info(f"selected file_crawl category {category}: {file_crawl}")
-            try:
-                file_crawl.file['url'] = url  # save url before crawl others
-                file_crawl.file['uid'] = uid
-                file_crawl.run(driver)  # fills .file
+                    if not driver:
+                        raise
+                    if category == 'apartment':
+                        file_instance = Apartment
+                    elif category == 'zamin_kolangy':
+                        file_instance = ZaminKolangy
+                    elif category == 'vila':
+                        file_instance = Vila
+                    logger_separation.info("")
+                    logger_separation.info("----------")
+                    logger_file.info(f"--going to card {uid}. card url: {url}")
+                    set_random_agent(driver)  # set random agent every time called
+                    driver.get(url)
+                    time.sleep(2)
+                    file_crawl = file_instance(uid=uid, is_ejare=is_ejare)
+                    logger_file.info(f"selected file_crawl category {category}: {file_crawl}")
+                    try:
+                        file_crawl.file['url'] = url  # save url before crawl others
+                        file_crawl.file['uid'] = uid
+                        file_crawl.run(driver)  # fills .file
 
-                if settings.WRITE_REDIS_MONGO:  # is_ejare should no conflicts with 'ejare' price inside redis
-                    add_to_redis({**file_crawl.file, "category": category, "is_ejare": is_ejare,
-                                  "file_errors": file_crawl.file_errors})
-                    is_saved_to_redis = True
-            except Exception as e:
-                logger_file.error(f"failed cart to crawl. error: {e}")
-                errors.append(f"failed cart to crawl. error: {e}")
-                raise
+                        if settings.WRITE_REDIS_MONGO:  # is_ejare should no conflicts with 'ejare' price inside redis
+                            add_to_redis({**file_crawl.file, "category": category, "is_ejare": is_ejare,
+                                          "file_errors": file_crawl.file_errors})
+                            is_saved_to_redis = True
 
-            return True   # for retry functionality
-        except Exception as e:
-            errors.append(f"Failed totally. error: {e}")
-        finally:
-            if driver:
-                driver.quit()
-                set_driver_to_free(uid, is_saved_to_redis, errors)
-                logger.info(f"card crawler quited clean.")
-    else:
-        logger_file.info(f"cards list is blank. wait to find by card finder..")
+                    except Exception as e:
+                        logger_file.error(f"failed cart to crawl. error: {e}")
+                        errors.append(f"failed cart to crawl. error: {e}")
+                        raise
+
+                except Exception as e:
+                    errors.append(f"Failed totally. error: {e}")
+                    raise
+
+                finally:
+                    set_driver_to_free(uid, is_saved_to_redis, errors)  # required put before "if driver", driver coulde be None after uc_replacement_setup.get_driver_chrome and before reaching to uc_replacement_setup.driver = webdriver.Chrome..
+
+            else:
+                logger_file.info(f"exit crawling.")
+                break
+    except:
+        pass
+
+    finally:
+        if driver:
+            driver.quit()
+            logger.info(f"card crawler quited clean.")
 
 
 def test_crawl(url="https://divar.ir"):

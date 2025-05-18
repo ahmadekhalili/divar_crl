@@ -16,6 +16,7 @@ from .crawl_setup import advance_setup, test_setup, uc_replacement_setup
 from .serializers import FileMongoSerializer
 from .mongo_client import get_mongo_db, ConnectionFailure
 from .methods import add_to_redis, write_by_django, set_uid_url_redis
+from .redis_client import REDIS as r
 
 logger = logging.getLogger('web')
 
@@ -27,16 +28,24 @@ import environ
 
 env = environ.Env()
 environ.Env.read_env(os.path.join(Path(__file__).resolve().parent.parent.parent, '.env'))
-
+import redis
 
 def test(request):
     #get_mongo_db()['test'].insert_one({'message': 'hi2'})
-    url = "https://divar.ir/s/tehran/buy-apartment"
-    driver = uc_replacement_setup()
-    driver.get(url)  # Load the web page
+    #url = "https://divar.ir/s/tehran/buy-apartment"
+    #driver = uc_replacement_setup()
+    #driver.get(url)  # Load the web page
+    #title = driver.title
     #test_crawl(url="https://divar.ir/v/%D9%81%D8%B1%D9%88%D8%B4-%D8%A2%D9%BE%D8%A7%D8%B1%D8%AA%D9%85%D8%A7%D9%86-%DB%B1%DB%B0%DB%B4-%D9%85%D8%AA%D8%B1%DB%8C-%DB%B2-%D8%AE%D9%88%D8%A7%D8%A8%D9%87-%D8%AF%D8%B1-%D9%86%D8%B8%D8%A7%D9%85-%D8%A2%D8%A8%D8%A7%D8%AF/AafYQfSu")
     #set_uid_url_redis([('uid1', 'qweqwe'), ('uid1', 'tretert')])
-    return HttpResponse(f"success")
+    data = {
+        'temp': 25.4,
+        'location': 'Tehran'
+    }
+    stream_key = 'sensor:temperature'
+    entry_id = r.xadd(stream_key, data)
+    r.xgroup_create('mystream', 'mygroup', id='0', mkstream=True)
+    return HttpResponse(f"success:")
 
 
 class CrawlView(APIView):

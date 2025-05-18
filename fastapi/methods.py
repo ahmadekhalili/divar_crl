@@ -183,7 +183,8 @@ async def listen_redis():   # always listens to redis and if a record added read
             messages = await r.xreadgroup(group, consumer_name, {stream: '>'}, count=10, block=5000)
             if not messages:
                 continue
-            error_counts = 0      # reset on success
+            if messages:
+                error_counts = 0      # reset on success
             logger.debug("Received %d message batch", sum(len(entries) for _, entries in messages))
             for _, entries in messages:
                 for msg_id, entry in entries:
@@ -207,9 +208,9 @@ async def listen_redis():   # always listens to redis and if a record added read
                         if filecrawl:
                             filecrawl.file_errors.append("error taking record from redis")
 
-        except Exception:
+        except Exception as e:
             if error_counts < max_retry:  # else dont fill logs and just wait until stream creates (just restart fastapi)
-                logger.error("Error reading from Redis stream; retrying loop.")
+                logger.error(f"Error reading from Redis stream; retrying loop {e}.")
             if error_counts == 10:
                 logger.error("Max retries exided. restart fastapi.")
             max_retry += 1

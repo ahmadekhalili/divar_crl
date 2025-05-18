@@ -49,10 +49,10 @@ def get_driver_chrome(uid=None):
         for item in DRIVERS_CHROMS:
             if not item.get('uid'):
                 item['uid'] = uid
-                driver_logger.info(f"Successfully obtained driver for thread uid: {uid}")
+                driver_logger.info(f"Successfully obtained driver. card uid: {uid}", extra={"thread_name": threading.current_thread().name})
                 return item['driver_path'], item['chrome_path']
         else:
-            driver_logger.info("All drivers are busy, will retry...")
+            driver_logger.info("All drivers are busy, will retry...", extra={"thread_name": threading.current_thread().name})
             return False
 
 
@@ -63,9 +63,9 @@ def set_driver_to_free(uid=None, is_saved_to_redis=None, errors=None):  # for ma
     message_status = "Successfully saved to Redis" if is_saved_to_redis else "Failed to save to Redis" if is_saved_to_redis is False else ""
     with lock_thread:
         for item in DRIVERS_CHROMS:
-            if item.get('uid'):
+            if item.get('uid') == uid:
                 item['uid'] = None
-                driver_logger.info(f"{message_status} and exit. set driver for free uid: {uid}. errors: {errors}")
+                driver_logger.info(f"{message_status} and exit. set driver for free uid: {uid}. errors: {errors}", extra={"thread_name": threading.current_thread().name})
                 break
         else:      # if not found any item.get('uid') in whole lists
             driver_logger.info(f"Not found any driver to free up. {message_status} (uid={uid}). errors: {errors}")
@@ -163,55 +163,71 @@ def advance_setup():
 
 def uc_replacement_setup(uid=None):
     driver_chrome = get_driver_chrome(uid)
-    options = Options()
-    service = Service(executable_path=driver_chrome[0])
-    options.binary_location = driver_chrome[1]
-    options.add_argument("--headless=new")  # if you need headless
+    if not driver_chrome:
+        return None
 
-    #options.add_argument(f"user-data-dir={env('CHROME_PROFILE_PATH')}")
-    #options.add_argument(f"--profile-directory={env('CHROME_PROFILE_FOLDER')}")
-    # profile_path = os.path.join(os.getenv('APPDATA'), 'Local', 'Google', 'Chrome', 'User Data', 'Profile5')
-    # options.add_argument(f"user-data-dir={profile_path}")
-    # options.add_argument("--disable-extensions")
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-gpu')
+    driver_load_retries = 2
+    for i in range(driver_load_retries):
+        try:
+            options = Options()
+            service = Service(executable_path=driver_chrome[0])
+            options.binary_location = driver_chrome[1]
+            options.add_argument("--headless=new")  # if you need headless
 
-    # –– 2) Anti-detection flags
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option("useAutomationExtension", False)
+            #options.add_argument(f"user-data-dir={env('CHROME_PROFILE_PATH')}")
+            #options.add_argument(f"--profile-directory={env('CHROME_PROFILE_FOLDER')}")
+            # profile_path = os.path.join(os.getenv('APPDATA'), 'Local', 'Google', 'Chrome', 'User Data', 'Profile5')
+            # options.add_argument(f"user-data-dir={profile_path}")
+            # options.add_argument("--disable-extensions")
+            options.add_argument('--no-sandbox')
+            options.add_argument('--disable-dev-shm-usage')
+            options.add_argument('--disable-gpu')
 
-    # –– 3) Random User-Agent
-    USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " \
-                 "AppleWebKit/537.36 (KHTML, like Gecko) " \
-                 "Chrome/114.0.0.0 Safari/537.36"
-    #ua = UserAgent().random
-    options.add_argument(f"--user-agent={USER_AGENT}")  # refresh inside crawl.py (via 'set_random_agent')
+            # –– 2) Anti-detection flags
+            options.add_argument("--disable-blink-features=AutomationControlled")
+            options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            options.add_experimental_option("useAutomationExtension", False)
 
-    # –– 4) Insecure-certs & any other “caps” via Options
-    options.set_capability("acceptInsecureCerts", True)
-    # If you had other caps: options.set_capability("someCap", someValue)
+            # –– 3) Random User-Agent
+            USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " \
+                         "AppleWebKit/537.36 (KHTML, like Gecko) " \
+                         "Chrome/114.0.0.0 Safari/537.36"
+            #ua = UserAgent().random
+            options.add_argument(f"--user-agent={USER_AGENT}")  # refresh inside crawl.py (via 'set_random_agent')
 
-    driver = webdriver.Chrome(service=service, options=options)
-    # –– 6) CDP stealth patch + window sizing
-    _apply_stealth_cdp(driver)
-    driver.set_window_size(1920, 1080)
-    #stealth(driver, languages=["en-US", "en"], vendor="Google Inc.", platform="Win32", webgl_vendor="Intel Inc.", renderer="Intel Iris OpenGL Engine", fix_hairline=True, run_on_insecure_origins=True, hide_webdriver=True)
-    # Open a blank page to start with a clean slate
-    logger.debug('before open the page')
-    #driver.get("about:blank")
-    # Create an ActionChains instance
-    actions = ActionChains(driver)
-    # Optionally, position the mouse at a central point (this is our starting point)
-    start_x, start_y = 1078, 521
-    logger.debug('ActionChains opended')
-    actions.move_by_offset(start_x, start_y).perform()
-    logger.debug('move_by_offset run')
-    time.sleep(0.41)  # a slight pause to mimic natural behavior
-    actions = HumanMouseMove.human_mouse_move(actions, (random.randint(0, 500), random.randint(0, 500)), (random.randint(0, 500), random.randint(0, 500)))
-    logger.debug('human_mouse_move was run')
-    driver.maximize_window()
+            # –– 4) Insecure-certs & any other “caps” via Options
+            options.set_capability("acceptInsecureCerts", True)
+            # If you had other caps: options.set_capability("someCap", someValue)
+
+            driver = webdriver.Chrome(service=service, options=options)
+            break
+        except:
+            logger.error(f"Failed initializing driver. attempts: {i+1}/{driver_load_retries}")
+            time.sleep(2)
+            if i+1 == driver_load_retries:
+                return None  # prevent raise stealth error in _apply_stealth_cdp(driver)
+    try:
+        # –– 6) CDP stealth patch + window sizing
+        _apply_stealth_cdp(driver)
+        #stealth(driver, languages=["en-US", "en"], vendor="Google Inc.", platform="Win32", webgl_vendor="Intel Inc.", renderer="Intel Iris OpenGL Engine", fix_hairline=True, run_on_insecure_origins=True, hide_webdriver=True)
+        # Open a blank page to start with a clean slate
+        #logger.debug('before open the page')
+        #driver.get("about:blank")
+        # Create an ActionChains instance
+        #actions = ActionChains(driver)
+        # Optionally, position the mouse at a central point (this is our starting point)
+        #start_x, start_y = 1078, 521
+        #logger.debug('ActionChains opended')
+        #actions.move_by_offset(start_x, start_y).perform()
+        #logger.debug('move_by_offset run')
+        #time.sleep(0.41)  # a slight pause to mimic natural behavior
+        #actions = HumanMouseMove.human_mouse_move(actions, (random.randint(0, 500), random.randint(0, 500)), (random.randint(0, 500), random.randint(0, 500)))
+        #logger.debug('human_mouse_move was run')
+        #driver.maximize_window()  dont use in headless
+    except Exception as e:     # highly import quite driver safly and dont lost and let it open indie tones of blocks of try exception...
+        logger.error(f"failed hide mecanism after driver creation. quite driver safty. reason: {e}")
+        driver.quit()
+        driver = None
     return driver
 
 

@@ -13,6 +13,7 @@ import logging
 import redis
 import json
 import functools
+import threading
 
 from .redis_client import REDIS
 
@@ -91,17 +92,20 @@ def sync_upload_and_get_image_paths(urls, file_number):   # upload the image ful
     return None
 
 
-def retry_func(max_attempts=2, delay=20, fail_message_after_attempts='', loger=logger):
+def retry_func(max_attempts=2, delay=20, fail_message_after_attempts='', loger=logger, retry_msg=''):
     """Retry decorator for acquiring Chrome driver in a thread-safe way."""
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             for attempt in range(max_attempts):
-                loger.info(f"try run {func}, attempt: {attempt+1}/{max_attempts}")
+                loger.info(f"try run {func.__name__}, attempt: {attempt+1}/{max_attempts}", extra={"thread_name": threading.current_thread().name})
                 result = func(*args, **kwargs)
                 if result:
                     return result
-                loger.debug(f"retry again, result was: {result}")
+                if retry_msg:
+                    loger.info(f"{retry_msg}. attempts: {attempt+1}/{max_attempts}")
+                else:
+                    loger.debug(f"retry again, result was: {result}")
                 time.sleep(delay)
             if fail_message_after_attempts:
                 loger.info(f"{fail_message_after_attempts} after {max_attempts} attempts.")
@@ -162,11 +166,22 @@ def set_uid_url_redis(cards, data_key='uid_url_list', uid_set_key='unique_uid'):
     logger.debug(f"Added cards to redis: {added_count}, duplicates not added: {duplicate_count}")
     return added_count
 
-def get_uid_url_redis():  # return None, None in blank is required
+def get_uid_url_redis():  # return (None, None) in blank is required
     uid, url = None, None
-    item = REDIS.lpop("uid_url_list")  # pops oldest item (left-most), rpop newest
-    if item:
-        uid, url = item.split("|", 1)  # max split 1
-        remaining = REDIS.llen("uid_url_list")  # get remaining number of items
-        logger_file.info(f"uid & url popped successfully from redis to start crawl. remains cards in db: {remaining}")
+    # Blocks until an element is available
+    # suppose 20 threads arrive here; Redis makes each thread block (sleep). They do not consume CPU
+    try:
+        logger_file.info("pending to get card from redis to start crawl...")
+        item = REDIS.blpop("uid_url_list", timeout=120)  # pops oldest item (left-most), brpop newest. returns None after 120
+        if item:
+            _, value = item
+            uid, url = value.split("|", 1)  # max split 1
+            remaining = REDIS.llen("uid_url_list")  # get remaining number of items
+            logger_file.info(f"uid & url popped successfully from redis to start crawl. remains cards in db: {remaining}")
+            return uid, url
+        else:
+            logger_file.info(f"there isn't any card in redis to get and crawl.")
+    except Exception as e:
+        logger_file.error(f"Error getting from redis record. error: {e}")
     return uid, url
+

@@ -106,11 +106,11 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s',
+            'format': '[%(asctime)s] %(levelname)s [%(threadName)s] %(message)s',
             'datefmt': '%Y-%m-%d %H:%M:%S',
         },
         'indented': {  # additional space in first ('  ')
-            'format': '  [%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s',
+            'format': '  [%(asctime)s] %(levelname)s [%(threadName)s] %(message)s',  # [%(name)s:%(lineno)s]
             'datefmt': '%Y-%m-%d %H:%M:%S',
         },
         'card_separation': {
