@@ -18,6 +18,7 @@ import os
 import sys
 import json
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import django
 from django.conf import settings
 
@@ -25,12 +26,10 @@ from mongo_client import db
 from models import ApartmentItem
 
 # Step 1: Add project root (C:\backs\divar_crl) to sys.path
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(BASE_DIR)  # from you can imports from django root, from divar_crl import settings  # ✅ Works because divar_crl/ is now on sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent  # Move one level up from fastapi/
+sys.path.append(str(BASE_DIR))  # from you can imports from django root, from divar_crl import settings  # ✅ Works because divar_crl/ is now on sys.path
 from divar_crl.settings import DEBUG
 
-
-BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
 env.read_env(os.path.join(BASE_DIR, '.env'))
 
@@ -41,11 +40,13 @@ logger = logging.getLogger('fastapi')
 
 
 class FileCrawl:
-    def __init__(self, uid, url):
+    def __init__(self, uid, url, **extras):
         self.uid = uid
         self.url = url
         self.file_errors = []
-
+        self.file_warns = []
+        for key, value in extras.items():   # set auto additional attrs of the FileCrawl (file_errors, file_warns..)
+            setattr(self, key, value)
 
 async def upload(client: AsyncClient,
                  url: str,
@@ -135,7 +136,7 @@ async def save_to_mongodb(data: Dict[str, Any], filecrawl):  # dont sames multip
         if data.get("image_srcs"):  # upload to the hard and set image_paths
             data["image_paths"] = await upload_and_get_image_paths(data["image_srcs"], data["uid"])
 
-        now = datetime.utcnow()
+        now = datetime.now(ZoneInfo("Asia/Tehran"))
         data["created_at"] = now
 
         logger.debug("Starting save_to_mongodb for redis_record: %r", data)
@@ -156,9 +157,13 @@ async def save_to_mongodb(data: Dict[str, Any], filecrawl):  # dont sames multip
         elif data['category'] == "vila":
             result = await db.vila.insert_one(doc)
         logger.info("Inserted new document in mongo db with _id=%s", result.inserted_id)
-        uid, url, file_errors = getattr(filecrawl, 'uid', None), getattr(filecrawl, 'url', None), getattr(filecrawl, 'file_errors', None)
+        uid, url = getattr(filecrawl, 'uid', None), getattr(filecrawl, 'url', None)
+        file_errors, file_warns = getattr(filecrawl, 'file_errors', None), getattr(filecrawl, 'file_warns', None)
         symbol = "✅" if not file_errors else "❌"
-        message_to_write = f"{symbol} - (uid={uid}, url={url})  errors: {file_errors}"
+        if symbol == "✅":
+            if file_warns:
+                symbol = "✅⚠️"
+        message_to_write = f"{symbol} - (uid={uid}, url={url})  errors: {file_errors}  warns: {file_warns}"
         card_logger.info(message_to_write)
     except Exception as e:
         message = f"Failed to save {data.get('category')} to MongoDB. totaly skaped save_to_mongodb func. error: {e}"
@@ -190,10 +195,11 @@ async def listen_redis():   # always listens to redis and if a record added read
                 for msg_id, entry in entries:
                     try:
                         filecrawl = None   # prevent reference error
-                        data = json.loads(entry[b'data'])  # data is exact type was written to redis. if was list is list, if was dic is dict. it is now dict because in django crawl.add_to_redis we set dict
+                        data = json.loads(entry[b'data'])  # data is exact type was written to redis. if was list is list, if was dic is dict. it is now dict because in django crawl.add_finall_card_to_redis we set dict
+                        file_crawl_extra = json.loads(entry[b'file_crawl_extra'])
+
                         logger.debug("Processing message %s: %r", msg_id, data)
-                        filecrawl = FileCrawl(uid=data['uid'], url=data['url'])
-                        filecrawl.file_errors = data.pop('file_errors', [])
+                        filecrawl = FileCrawl(uid=data['uid'], url=data['url'], **file_crawl_extra)  # auto set attrs
                         await save_to_mongodb(data, filecrawl)
                         await r.xack(stream, group, msg_id)  # sign as proceed message
                         if DEBUG == False:
@@ -210,7 +216,7 @@ async def listen_redis():   # always listens to redis and if a record added read
 
         except Exception as e:
             if error_counts < max_retry:  # else dont fill logs and just wait until stream creates (just restart fastapi)
-                logger.error(f"Error reading from Redis stream; retrying loop {e}.")
+                logger.error(f"Error reading from Redis stream; retrying loop. error: {e}.")
             if error_counts == 10:
                 logger.error("Max retries exided. restart fastapi.")
             max_retry += 1

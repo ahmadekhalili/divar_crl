@@ -12,11 +12,10 @@ db.createUser({
     roles: [ { role: "readWrite", db: "divar" } ]
   })
 
-docker run -d --name redis -p 6379:6379 redis:6.2  # install redis insite
 
 - run postgres (localhost, 5432)
 - run mongo (localhost, default port)
-- run redis (localhost, 6379), `docker run -d --name redis -p 6379:6379 -v redis_data:/data redis:6.2 redis-server --bind 0.0.0.0 --port 6379 --protected-mode no`
+- run redis (localhost, 6379), `docker run -d --name redis -p 6379:6379 -v redis_data:/data redis/redis-stack-server:latest`
 - run fastapi (8001).
 
 ## setup:
@@ -78,6 +77,8 @@ if True, get ejare houses (vadie, ejare atts added in same table). also APARTMEN
 **`TEST_MANUAL_CARD_SELECTION:`**
 to test specefic file crawling in divar, set settings.TEST_MANUAL_CARD_SELECTION, or `None` in production and pass to crawl_files. structure: `[(file_uid, file_url)]`
 
+**to check driver**
+/mnt/c/chrome/linux/chrome-headless-shell-linux64-1/chrome --version
 
 
 ## developer section section

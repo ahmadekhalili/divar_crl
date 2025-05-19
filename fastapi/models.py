@@ -9,7 +9,7 @@ class ApartmentItem(BaseModel):  # 'category' has different db so dont save here
     uid: str   # required, id created for each file by divar
     is_ejare: bool
     phone: Optional[int] = Field(None, description="Phone number, None if unavailable")
-    title: str = Field(..., max_length=255, description="Listing title")
+    title: str = Field("", max_length=255, description="Listing title")  # put ... instead of ... for required
     rough_time: str = Field("", max_length=255, description="time file posted to divar like: نیم ساعت پیش")
     rough_address: str = Field("", max_length=255)
     metraj: Optional[str] = Field("", max_length=50)  # if not provided value, set to blank str and dont raise error

@@ -2,6 +2,7 @@ from django .conf import settings
 
 import logging
 import os
+import re
 import random
 import time
 import environ
@@ -10,14 +11,14 @@ from pathlib import Path
 
 from selenium import webdriver
 from fake_useragent import UserAgent
-import undetected_chromedriver as uc
+#import undetected_chromedriver as uc
 from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome import webdriver as chrome_webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
-from .methods import HumanMouseMove, retry_func
+from .methods import HumanMouseMove, retry_func, get_driver_from_redis, set_driver_to_redis
 from .serializers import logger_file
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,51 +28,46 @@ env.read_env(os.path.join(BASE_DIR, '.env'))
 logger = logging.getLogger('web')
 driver_logger = logging.getLogger('driver')
 
-def load_drivers(driver_counts):
-    for i in range(1, driver_counts + 1):
-        pass
-
-
 lock_thread = threading.Lock()
-DRIVERS_CHROMS = [{'uid': None, 'driver_path': env('DRIVER_PATH1'), 'chrome_path': env('CHROME_PATH1')},
-                  {'uid': None, 'driver_path': env('DRIVER_PATH2'), 'chrome_path': env('CHROME_PATH2')},
-                  {'uid': None, 'driver_path': env('DRIVER_PATH3'), 'chrome_path': env('CHROME_PATH3')},
-                  {'uid': None, 'driver_path': env('DRIVER_PATH4'), 'chrome_path': env('CHROME_PATH4')},
-                  {'uid': None, 'driver_path': env('DRIVER_PATH5'), 'chrome_path': env('CHROME_PATH5')},]
 
-driver_logger.debug(f"content of DRIVERS_CHROMS: {DRIVERS_CHROMS}")
+
 @retry_func(max_attempts=settings.RETRY_FOR_DRIVER, delay=20, fail_message_after_attempts='No free driver', loger=driver_logger)
 def get_driver_chrome(uid=None):
     """Try to acquire a free driver in a thread-safe way. Return paths or False if none."""
+    DRIVERS_CHROMS = get_driver_from_redis()
+    driver_logger.debug(f"content of DRIVERS_CHROMS from redis: {DRIVERS_CHROMS}")
+
     if not uid:
         uid = "main_thread"
-    with lock_thread:
-        for item in DRIVERS_CHROMS:
-            if not item.get('uid'):
-                item['uid'] = uid
-                driver_logger.info(f"Successfully obtained driver. card uid: {uid}", extra={"thread_name": threading.current_thread().name})
-                return item['driver_path'], item['chrome_path']
-        else:
-            driver_logger.info("All drivers are busy, will retry...", extra={"thread_name": threading.current_thread().name})
-            return False
+    for item in DRIVERS_CHROMS:
+        if not item.get('uid'):
+            item['uid'] = uid
+            driver_logger.info(f"Successfully obtained driver. card uid: {uid}", extra={"thread_name": threading.current_thread().name})
+            return item['driver_path'], item['chrome_path']
+    else:
+        driver_logger.info("All drivers are busy, will retry...", extra={"thread_name": threading.current_thread().name})
+        return False
 
 
 #@retry_func(max_attempts=1)  # dont want to show "Not found any driver to " additionally
 def set_driver_to_free(uid=None, is_saved_to_redis=None, errors=None):  # for main thread is_saved_to_redis should be None
     if not uid:
         uid = "main_thread"
+    DRIVERS_CHROMS = get_driver_from_redis()
+
     message_status = "Successfully saved to Redis" if is_saved_to_redis else "Failed to save to Redis" if is_saved_to_redis is False else ""
-    with lock_thread:
-        for item in DRIVERS_CHROMS:
-            if item.get('uid') == uid:
-                item['uid'] = None
-                driver_logger.info(f"{message_status} and exit. set driver for free uid: {uid}. errors: {errors}", extra={"thread_name": threading.current_thread().name})
-                break
-        else:      # if not found any item.get('uid') in whole lists
-            driver_logger.info(f"Not found any driver to free up. {message_status} (uid={uid}). errors: {errors}")
-        free_drivers_count = len([True for item in DRIVERS_CHROMS if item['uid'] is None])
-        driver_logger.info(f"Totally free drivers: {free_drivers_count}/{len(DRIVERS_CHROMS)}")
-        return True   # required for @retry_func functionality
+    for item in DRIVERS_CHROMS:
+        if item.get('uid') == uid:
+            item['uid'] = None
+            driver_logger.info(f"{message_status} and exit. set driver for free uid: {uid}. errors: {errors}", extra={"thread_name": threading.current_thread().name})
+            set_driver_to_redis(DRIVERS_CHROMS)
+            break
+    else:      # if not found any item.get('uid') in whole lists
+        driver_logger.info(f"Not found any driver to free up. {message_status} (uid={uid}). errors: {errors}")
+    free_drivers_count = len([True for item in DRIVERS_CHROMS if item['uid'] is None])
+    driver_logger.info(f"Totally free drivers: {free_drivers_count}/{len(DRIVERS_CHROMS)}")
+
+    return True   # required for @retry_func functionality
 
 
 def _apply_stealth_cdp(driver: webdriver.Chrome) -> None:

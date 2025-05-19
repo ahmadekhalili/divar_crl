@@ -3,10 +3,13 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from rest_framework.response import Response
 
+from pathlib import Path
+from redis.commands.json.path import Path as RedisPath
 import numpy as np
 import random
 import time
 import os
+import re
 from scipy.special import expit
 import requests
 import logging
@@ -14,13 +17,16 @@ import redis
 import json
 import functools
 import threading
+import environ
 
 from .redis_client import REDIS
 
+BASE_DIR = Path(__file__).resolve().parent.parent
 logger = logging.getLogger('web')
 logger_separation = logging.getLogger("web_separation")
 logger_file = logging.getLogger('file')
-
+env = environ.Env()
+env.read_env(os.path.join(BASE_DIR, '.env'))
 
 
 class HumanMouseMove:
@@ -136,10 +142,68 @@ def set_random_agent(driver):
     )
 
 
-def add_to_redis(data):
+def get_paths_from_template(full_path: str,
+                        start_index: int = 1,
+                        stop_index: int = 100):
+    """
+    full_path (template): e.g. /.../drivers/driver-1/chrome.exe
+    Return a list of Paths like
+    [/.../drivers/driver-2/chrome.exe, /.../drivers/driver-3/chrome.exe, ...]
+    """
+    full_path = Path(full_path).expanduser().resolve()
+
+    filename         = full_path.name            # chrome.exe
+    series_dir       = full_path.parent          # driver-1
+    drivers_root_dir = series_dir.parent         # drivers
+
+    # strip “-<digits>” at end of directory name
+    series_stem = re.sub(r'-\d+\s*$', '', series_dir.name)  # -> 'driver'
+
+    missing_in_a_row = False
+    siblings = []
+
+    for i in range(start_index, stop_index):
+        candidate_dir = drivers_root_dir / f"{series_stem}-{i}"
+        candidate_file = candidate_dir / filename
+
+        if candidate_dir.is_dir():
+            if missing_in_a_row:
+                logger.error(f"*******driver {siblings[-1]} has not valid format. skip others")
+            siblings.append(str(candidate_file))
+        else:
+            if missing_in_a_row:
+                break  # two missing_in_a_row, means we reach end of drivers and there is not more
+            missing_in_a_row = True
+
+    if not siblings:
+        logger.error("No sibling driver directories found for %s", full_path)
+
+    return siblings
+
+
+def add_driver_to_redis():  # rewrite (refresh with new dirs) if needed
+    DRIVERS_CHROMS = []   # should be list of like: {'uid': None, 'driver_path': .., 'chrome_path': ..}
+    drivers_path = get_paths_from_template(env('DRIVER_PATH1'))
+    chromes_path = get_paths_from_template(env('CHROME_PATH1'))
+    for driver_dir, chrome_dir in zip(drivers_path, chromes_path):  # auto iter based on smallest of drivers_path, chromes_path
+        DRIVERS_CHROMS.append({'uid': None, 'driver_path': driver_dir, 'chrome_path': chrome_dir})
+    REDIS.json().set('drivers_chromes', RedisPath.root_path(), DRIVERS_CHROMS)
+
+
+def get_driver_from_redis():
+    return REDIS.json().get('drivers_chromes')
+
+
+def set_driver_to_redis(data=None):
+    REDIS.json().set('drivers_chromes', RedisPath.root_path(), data)
+    driver_logger.info(f"successfully updates redis 'drivers_chromes")
+
+
+def add_final_card_to_redis(data, file_crawl_extra):
     try:
         logger.info(f"going to write in redis data: {data}")
-        REDIS.xadd('data_stream', {'data': json.dumps(data, ensure_ascii=False)})
+        REDIS.xadd('data_stream', {'data': json.dumps(data, ensure_ascii=False),
+                                   'file_crawl_extra': json.dumps(file_crawl_extra, ensure_ascii=False)})
     except Exception as e:
         logger.error(f"raise error adding file record to the redis. error: {e}")
         raise   # reraise for upstream workflow
@@ -172,7 +236,7 @@ def get_uid_url_redis():  # return (None, None) in blank is required
     # suppose 20 threads arrive here; Redis makes each thread block (sleep). They do not consume CPU
     try:
         logger_file.info("pending to get card from redis to start crawl...")
-        item = REDIS.blpop("uid_url_list", timeout=120)  # pops oldest item (left-most), brpop newest. returns None after 120
+        item = REDIS.blpop("uid_url_list", timeout=settings.CARD_CRAWLER_PENDDINGS)  # pops oldest item (left-most), brpop newest. returns None after 120
         if item:
             _, value = item
             uid, url = value.split("|", 1)  # max split 1
@@ -184,4 +248,5 @@ def get_uid_url_redis():  # return (None, None) in blank is required
     except Exception as e:
         logger_file.error(f"Error getting from redis record. error: {e}")
     return uid, url
+
 

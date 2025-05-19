@@ -43,7 +43,7 @@ from .crawl_setup import advance_setup, uc_replacement_setup, set_driver_to_free
 from .serializers import FileMongoSerializer
 from .mongo_client import get_mongo_db
 from .redis_client import REDIS
-from .methods import add_to_redis, set_random_agent, set_uid_url_redis, get_uid_url_redis, retry_func
+from .methods import add_final_card_to_redis, set_random_agent, set_uid_url_redis, get_uid_url_redis, retry_func
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -509,23 +509,33 @@ class GetValue:       # get final values ready to add in file fields
         for i in range(retry):
             try:
                 title = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located((By.CSS_SELECTOR, "h1[class*='page-title__title']"))).text.strip()
-                logger.info(f"title crawld: {title}")
+                logger.info(f"title crawld (retry {i+1}/{retry}): {title}")
                 return title
             except StaleElementReferenceException as e:
+                message = f"couldn't get title because of stale."
                 logger_file.error(f"couldn't get title because of stale. wait and retry. error: {e}")
                 if i+1 == retry:
                     return self.file_crawl.file['title']
                 time.sleep(5)
             except Exception as e:
-                logger_file.error(f"couldn't get title of the card. refresh page. retry {i+1}/{retry}. error: {e}")
-                self.file_crawl.file_errors.append(f"couldn't get title of the card. refresh page. ")
-                time.sleep(1)
-                self.driver.get(self.file_crawl.file['url'])
-                self.take_Screen_in_title(self.file_crawl.file['uid'], file_name=f"screenshot_in_title_error_retry{i+1}")
+                try:  # retry
+                    message = f"couldn't get title of the card. refresh page. "
+                    logger_file.error(f"couldn't get title of the card. refresh page. retry {i+1}/{retry}. error: {e}")
+                    self.screenshot_in_title_sec(self.file_crawl.file['uid'], file_name=f"screenshot_in_title_error_retry{i + 1}")
+                    self.file_crawl.file_warns.append(f'title retry, saved: screenshot_in_title_error_retry{i + 1}')
+                    time.sleep(1)
+                    self.driver.get(self.file_crawl.file['url'])
+                    if i+1 == retry:
+                        return self.file_crawl.file['title']   # return default (dynamic programming)
+                except Exception as e:  # exit
+                    logger_file.error(f"raise error in title section. unable to retry. exit. error: {e}")
+                    return self.file_crawl.file['title']
+            finally:
                 if i+1 == retry:
-                    return self.file_crawl.file['title']   # return default (dynamic programming)
+                    self.file_crawl.file_errors.append()  # we dont want flaged the card as 'failure' if successfuly grabed after retry some retry
 
-    def take_Screen_in_title(self, uid, file_name):
+
+    def screenshot_in_title_sec(self, uid, file_name):
         relative_path = os.path.join(f'file_{uid}', 'file_images')
         full_path = os.path.join(settings.MEDIA_ROOT, relative_path)
         os.makedirs(full_path, exist_ok=True)
@@ -791,13 +801,14 @@ class Apartment:
         self.uid = uid
         self.is_ejare = is_ejare
         self.file = {
-            'uid': uid, 'phone': None, 'title': None, 'metraj': None, 'age': None, 'otagh': None, 'total_price': None,
+            'uid': uid, 'phone': None, 'title': '', 'metraj': None, 'age': None, 'otagh': None, 'total_price': None,
             'price_per_meter': None, 'floor_number': None, 'general_features': [], 'description': '', 'tags': [],
-            'agency': None, 'rough_time': None, 'rough_address': None,
+            'agency': None, 'rough_time': '', 'rough_address': '',
             'vadie': None, 'ejare': None, 'vadie_exchange': None,      # just for ejare files, vadie_exchange means can ejare vadie can be exchange or not, it is str
             'image_srcs': [], 'specs': {}, 'features': [], 'url': None
         }
         self.file_errors = []
+        self.file_warns = []
         self.screenshot_map_path = env('screenshot_map_path').format(uid=uid)
 
     def __repr__(self):
@@ -1266,8 +1277,9 @@ def crawl_file():  # each thread runs separatly
                         file_crawl.run(driver)  # fills .file
 
                         if settings.WRITE_REDIS_MONGO:  # is_ejare should no conflicts with 'ejare' price inside redis
-                            add_to_redis({**file_crawl.file, "category": category, "is_ejare": is_ejare,
-                                          "file_errors": file_crawl.file_errors})
+                            add_final_card_to_redis({**file_crawl.file, "category": category, "is_ejare": is_ejare},
+                                                    {"file_errors": file_crawl.file_errors, 'file_warns': file_crawl.file_warns}  # keys should be same with file_crawl attrs
+                                                     )
                             is_saved_to_redis = True
 
                     except Exception as e:
