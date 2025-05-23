@@ -10,3 +10,10 @@ in fastapi, everything start from methods/listen_redis. listen to redis and if f
 
 # notes:
 - if you removed data stream (And maybe group) of redis you will saw endless log writings. should restart fastapi to fix
+
+
+### others
+- `redis-cli INFO`
+
+
+

@@ -136,7 +136,7 @@ async def save_to_mongodb(data: Dict[str, Any], filecrawl):  # dont sames multip
         if data.get("image_srcs"):  # upload to the hard and set image_paths
             data["image_paths"] = await upload_and_get_image_paths(data["image_srcs"], data["uid"])
 
-        now = datetime.now(ZoneInfo("Asia/Tehran"))
+        now = datetime.now(ZoneInfo("UTC"))   # mongo default saves in UTC in any way!
         data["created_at"] = now
 
         logger.debug("Starting save_to_mongodb for redis_record: %r", data)
@@ -184,7 +184,7 @@ async def listen_redis():   # always listens to redis and if a record added read
 
     while True:
         try:
-            # get records from redis, add {{consumer_name}} to stream consumers list too
+            # 5 ثانیه منتظر بمون تا پیام جدید بیاد. اگه نبود دوباره بچرخ
             messages = await r.xreadgroup(group, consumer_name, {stream: '>'}, count=10, block=5000)
             if not messages:
                 continue

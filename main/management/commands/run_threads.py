@@ -32,7 +32,7 @@ class Command(BaseCommand):   # 3 thread of craw card and 1 thread of find_cards
         task1.start()
         logger.info(f"Started main thread to get cards")
 
-        max_threads = 9      # thread = drivers - 1 (one thread for card_finder main thread)
+        max_threads = settings.DRIVERS_COUNT-1      # thread = drivers - 1 (one thread for card_finder main thread)
         logger.info("Starting crawl with %d threads...", max_threads)
         # give the pool a prefix; threads will be named thread_0, thread_1, …
         with ThreadPoolExecutor(max_workers=max_threads, thread_name_prefix="thread_pol") as executor:

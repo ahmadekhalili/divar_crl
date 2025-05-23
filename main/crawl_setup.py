@@ -169,8 +169,8 @@ def uc_replacement_setup(uid=None):
             service = Service(executable_path=driver_chrome[0])
             options.binary_location = driver_chrome[1]
             options.add_argument("--headless=new")  # if you need headless
-
-            #options.add_argument(f"user-data-dir={env('CHROME_PROFILE_PATH')}")
+            #profile_dir = env('CHROME_PROFILE_PATH').format(profile_num=my_profile)
+            #options.add_argument(f"--user-data-dir={profile_dir}")
             #options.add_argument(f"--profile-directory={env('CHROME_PROFILE_FOLDER')}")
             # profile_path = os.path.join(os.getenv('APPDATA'), 'Local', 'Google', 'Chrome', 'User Data', 'Profile5')
             # options.add_argument(f"user-data-dir={profile_path}")
@@ -185,9 +185,9 @@ def uc_replacement_setup(uid=None):
             options.add_experimental_option("useAutomationExtension", False)
 
             # –– 3) Random User-Agent
-            USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " \
-                         "AppleWebKit/537.36 (KHTML, like Gecko) " \
-                         "Chrome/114.0.0.0 Safari/537.36"
+            USER_AGENT = random.choice(settings.AGENTS)  # randomly select one of lists
+
+            #USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
             #ua = UserAgent().random
             options.add_argument(f"--user-agent={USER_AGENT}")  # refresh inside crawl.py (via 'set_random_agent')
 

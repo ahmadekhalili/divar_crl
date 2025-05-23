@@ -39,12 +39,17 @@ def test(request):
     #test_crawl(url="https://divar.ir/v/%D9%81%D8%B1%D9%88%D8%B4-%D8%A2%D9%BE%D8%A7%D8%B1%D8%AA%D9%85%D8%A7%D9%86-%DB%B1%DB%B0%DB%B4-%D9%85%D8%AA%D8%B1%DB%8C-%DB%B2-%D8%AE%D9%88%D8%A7%D8%A8%D9%87-%D8%AF%D8%B1-%D9%86%D8%B8%D8%A7%D9%85-%D8%A2%D8%A8%D8%A7%D8%AF/AafYQfSu")
     #set_uid_url_redis([('uid1', 'qweqwe'), ('uid1', 'tretert')])
     data = {
-        "name": "Ali",
-    "email": "ali@example.com",
-    "age": 30
-
+        'temp': 25.4,
+        'location': 'Tehran'
     }
-    r.hset("user:1001", mapping=data)
+
+
+    sub = r.pubsub()
+    sub.subscribe('news_channel')
+
+
+    for msg in sub.listen():
+        print(msg['data'])
     return HttpResponse(f"success:")
 
 

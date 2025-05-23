@@ -185,7 +185,8 @@ def add_driver_to_redis():  # rewrite (refresh with new dirs) if needed
     DRIVERS_CHROMS = []   # should be list of like: {'uid': None, 'driver_path': .., 'chrome_path': ..}
     drivers_path = get_paths_from_template(env('DRIVER_PATH1'))
     chromes_path = get_paths_from_template(env('CHROME_PATH1'))
-    for driver_dir, chrome_dir in zip(drivers_path, chromes_path):  # auto iter based on smallest of drivers_path, chromes_path
+    limit = min(settings.DRIVERS_COUNT, len(drivers_path), len(chromes_path))
+    for driver_dir, chrome_dir in zip(drivers_path[:limit], chromes_path[:limit]):  # auto iter based on smallest of drivers_path, chromes_path
         DRIVERS_CHROMS.append({'uid': None, 'driver_path': driver_dir, 'chrome_path': chrome_dir})
     REDIS.json().set('drivers_chromes', RedisPath.root_path(), DRIVERS_CHROMS)
 
@@ -248,5 +249,3 @@ def get_uid_url_redis():  # return (None, None) in blank is required
     except Exception as e:
         logger_file.error(f"Error getting from redis record. error: {e}")
     return uid, url
-
-

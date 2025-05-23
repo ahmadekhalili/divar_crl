@@ -25,14 +25,10 @@ TEST_RESERVATION=True  # if be True, last submit button will not be pressed (use
 SECURE_SSL_REDIRECT=False  # False in test environments without ssl domain
 #DRIVER_PATH=C:\\Users\\Admin\\.wdm\\drivers\\chromedriver\\win64\\135.0.7049.97\\chromedriver-win32\\chromedriver.exe
 #CHROME_PATH=C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe
-DRIVER_PATH1=C:\chrome\chromedriver1-win64\chromedriver.exe
-CHROME_PATH1=C:\chrome\chrome1-win64\chrome.exe
-DRIVER_PATH2=C:\chrome\chromedriver2-win64\chromedriver.exe
-CHROME_PATH2=C:\chrome\chrome2-win64\chrome.exe
-DRIVER_PATH3=C:\chrome\chromedriver3-win64\chromedriver.exe
-CHROME_PATH3=C:\chrome\chrome3-win64\chrome.exe
-CHROME_PROFILE_PATH=C:\\Users\\skh\\AppData\\Local\\Google\\Chrome for Testing\\User Data
-CHROME_PROFILE_FOLDER=Profile 3
+DRIVER_PATH1=/mnt/c/chrome/linux/chromedriver-linux64-1/chromedriver
+CHROME_PATH1=/mnt/c/chrome/linux/chrome-headless-shell-linux64-1/chrome-headless-shell
+CHROME_PROFILE_PATH=/mnt/c/chrome/linux/User-Data
+CHROME_PROFILE_FOLDER=Profile-3
 #CHROME_PROFILE_PATH=C:\\Users\\Admin\\AppData\\Local\\Google\\Chrome\\User Data
 #CHROME_PROFILE_FOLDER=Profile 7
 EXTENSION_PATH=C:\\10\\xa\\nobat\\scripts\\extension_minimize
@@ -51,6 +47,7 @@ MONGO_SOURCE=admin
 MONGO_HOST=127.0.0.1
 SCREENSHOT_IMAGE_PATH=media/file_{uid}/file_images
 screenshot_map_path=media/file_{uid}/file_mapes
+
 ```
 
 
@@ -78,7 +75,10 @@ if True, get ejare houses (vadie, ejare atts added in same table). also APARTMEN
 to test specefic file crawling in divar, set settings.TEST_MANUAL_CARD_SELECTION, or `None` in production and pass to crawl_files. structure: `[(file_uid, file_url)]`
 
 **to check driver**
-/mnt/c/chrome/linux/chrome-headless-shell-linux64-1/chrome --version
+/mnt/c/chrome/linux/chrome-headless-shell-linux64-1/chrome --version  
+
+**DRIVER_PATH1:**
+all others drivers and chromes will be set auto. just first driver and chrome required.  
 
 
 ## developer section section
