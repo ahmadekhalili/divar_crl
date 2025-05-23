@@ -25,6 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 logger = logging.getLogger('web')
 logger_separation = logging.getLogger("web_separation")
 logger_file = logging.getLogger('file')
+driver_logger = logging.getLogger('driver')
 env = environ.Env()
 env.read_env(os.path.join(BASE_DIR, '.env'))
 
@@ -129,17 +130,6 @@ def write_by_django(serializer, unique_files, errors):
     else:
         logger.error(f"for is not valid, error: {s.errors}")
         return Response(s.errors)
-
-
-def set_random_agent(driver):
-    agents = settings.AGENTS
-    rnd = random.randrange(len(agents))
-    ua = agents[rnd]
-    logger.info(f"user agent number: {rnd} selected.")
-    driver.execute_cdp_cmd(
-        "Network.setUserAgentOverride",
-        {"userAgent": ua}
-    )
 
 
 def get_paths_from_template(full_path: str,

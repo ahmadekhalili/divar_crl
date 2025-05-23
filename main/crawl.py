@@ -43,7 +43,7 @@ from .crawl_setup import advance_setup, uc_replacement_setup, set_driver_to_free
 from .serializers import FileMongoSerializer
 from .mongo_client import get_mongo_db
 from .redis_client import REDIS
-from .methods import add_final_card_to_redis, set_random_agent, set_uid_url_redis, get_uid_url_redis, retry_func
+from .methods import add_final_card_to_redis, set_uid_url_redis, get_uid_url_redis, retry_func
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -773,8 +773,8 @@ class GetValue:       # get final values ready to add in file fields
                 break
 
         # in mismatch maybe duplicates or fails
-        message = f"--crawled images: {image_success}/{image_counts}. duplicates: {image_success-len(list(image_srcs))}"
-        logger_file.info(message)
+        message = f"crawled images: {image_success}/{image_counts}. duplicates: {image_success-len(list(image_srcs))}"
+        logger_file.info(f"--{message}")
         if image_success != image_counts:
             self.file_crawl.file_errors.append(message)
 
@@ -1009,7 +1009,7 @@ class Apartment:
 
 class ZaminKolangy(Apartment):  # general_features, specs, features removed
     def __init__(self, uid, is_ejare):
-        super().__init__(uid)
+        super().__init__(uid, is_ejare)
         del self.file['general_features']
         del self.file['specs']
         del self.file['features']
@@ -1246,22 +1246,21 @@ def crawl_file():  # each thread runs separatly
     is_saved_to_redis = False
     errors = []
     driver = None
-    while True:    # keep crawling untile there isnt any record in redis to craw (get_uid_url_redis is None)
+    while True:    # keep crawling until there isnt any record in redis to craw (get_uid_url_redis is None)
         try:
-            driver = uc_replacement_setup(threading.get_ident())  # if put inside while opens new page in every loop.
+            driver = uc_replacement_setup(threading.current_thread().name)  # if put inside while opens new page in every loop.
+            if driver:
+                logger.info(f"driver loaded. ready to crawl")
+            else:
+                logger.error(f"driver not loaded. exit")
+                return
             for i in range(settings.CARDS_EACH_DRIVER):  # now each thread can crawl more cards. after ending previouse crawl, return and take from redis and crawl
-                if i+1 == settings.CARDS_EACH_DRIVER:
-                    logger.info('refresh the driver')
-                    break      # refresh driver
                 uid, url = get_uid_url_redis()  # wait until 120 sec to arrive new records
                 is_saved_to_redis = False
                 if url and uid:
                     # open_driver_and_Crawl
                     max_retry = 2
                     try:  # "retry for re crawl the file. attempts: {i + 1}/{max_retry}" f"max retry. going to refetch from redis."
-
-                        if not driver:
-                            raise
                         if category == 'apartment':
                             file_instance = Apartment
                         elif category == 'zamin_kolangy':
@@ -1271,7 +1270,6 @@ def crawl_file():  # each thread runs separatly
                         logger_separation.info("")
                         logger_separation.info("----------")
                         logger_file.info(f"--going to card {uid}. card url: {url}")
-                        set_random_agent(driver)  # set random agent every time called
                         driver.get(url)
                         time.sleep(2)
                         file_crawl = file_instance(uid=uid, is_ejare=is_ejare)
@@ -1294,19 +1292,23 @@ def crawl_file():  # each thread runs separatly
 
                     except Exception as e:
                         errors.append(f"Failed totally. error: {e}")
-                        raise
 
                 else:
-                    logger_file.info(f"exit crawling.")
+                    logger.info(f"exit crawling.")
                     return True  # exit from two loops
-        except:
-            pass
+
+                if i+1 == settings.CARDS_EACH_DRIVER:  # now we can crawl if CARDS_EACH_DRIVER is 1
+                    logger.info('try refresh the driver')
+                    break      # exit  for loop and refresh driver (to crawl further cards by a thread)
+
+        except Exception as e:
+            logger.info(f"unexpected error: {e}")
 
         finally:
             if driver:
                 driver.quit()
                 logger.info(f"card crawler quited clean.")
-                set_driver_to_free(threading.get_ident(), is_saved_to_redis, errors)  # required put before "if driver", driver could be None after uc_replacement_setup.get_driver_chrome and before reaching to uc_replacement_setup.driver = webdriver.Chrome..
+                set_driver_to_free(threading.current_thread().name, is_saved_to_redis, errors)  # required put before "if driver", driver could be None after uc_replacement_setup.get_driver_chrome and before reaching to uc_replacement_setup.driver = webdriver.Chrome..
 
 
 def test_crawl(url="https://divar.ir"):

@@ -316,23 +316,26 @@ AGENTS = [
 ]
 RETRY_FOR_DRIVER = 2      # retry numbers to attempt and wait to find free driver and exit the card crawler thread?
 CARD_CRAWLER_PENDDINGS = 20     # in sec; how much wait and exit thread.
-DRIVERS_COUNT = 2         # important; number of drivers & chrome to use. crawl threads = DRIVERS_COUNT-1. redis connection = DRIVERS_COUNT + 5
-CARDS_EACH_DRIVER = 1    # mow much card crawl with each driver. agent and .. refresh after CARDS_EACH_DRIVER cards crawled
+DRIVERS_COUNT = 7         # important; number of drivers & chrome to use. crawl threads = DRIVERS_COUNT-1. redis connection = DRIVERS_COUNT + 5
+CARDS_EACH_DRIVER = 7    # how much cards crawl with each driver. agent and .. refresh after CARDS_EACH_DRIVER cards crawled
 
-MAX_FILE_CRAWL = 2   # number of files to crawl
+MAX_FILE_CRAWL = 10   # number of files to crawl
 MAX_IMAGE_CRAWL = 50  # skip further images, if a file has more that 20 images
 WRITE_REDIS_MONGO = True   # add each crawled card to redis (enable redis/mongo flow | use django own db)
+TEST_MANUAL_CARD_SELECTION = None# [('test_uid', 'https://divar.ir/v/%D8%B1%D9%87%D9%86-%D9%88-%D8%A7%D8%AC%D8%A7%D8%B1%D9%87-%D8%A2%D9%BE%D8%A7%D8%B1%D8%AA%D9%85%D8%A7%D9%86-50-%D9%85%D8%AA%D8%B1-%D9%86%D8%A7%D8%B1%D9%85%DA%A9-%DA%AF%D9%84%D8%B3%D8%AA%D8%A7%D9%86/AalI-DVB')]
 
 # apartment, ejare
 #APARTMENT_EJARE_ZAMIN =  "https://divar.ir/s/tehran/rent-apartment?has-photo=true&map_bbox=51.09297561645508%2C35.56098556518555%2C51.6052131652832%2C35.8353385925293&map_interaction=list_only_used&map_place_hash=1%7C%7Capartment-rent"
 # apartment, forosh
-APARTMENT_EJARE_ZAMIN =  "https://divar.ir/s/tehran/buy-apartment?has-photo=true&map_bbox=51.09297561645508%2C35.56098556518555%2C51.6052131652832%2C35.8353385925293&map_interaction=list_only_used&map_place_hash=1%7C%7Capartment-sell"
+#APARTMENT_EJARE_ZAMIN =  "https://divar.ir/s/tehran/buy-apartment?has-photo=true&map_bbox=51.09297561645508%2C35.56098556518555%2C51.6052131652832%2C35.8353385925293&map_interaction=list_only_used&map_place_hash=1%7C%7Capartment-sell"
+# vila, forosh
+#APARTMENT_EJARE_ZAMIN = "https://divar.ir/s/tehran/buy-villa?has-photo=true&map_bbox=51.092976%2C35.517476%2C51.605213%2C35.878675&map_interaction=list_only_used&map_place_hash=1%7C%7Chouse-villa-sell"
 # vila, ejare
 #APARTMENT_EJARE_ZAMIN = "https://divar.ir/s/tehran/rent-villa?has-photo=true&map_bbox=51.09297561645508%2C35.56098556518555%2C51.6052131652832%2C35.8353385925293&map_interaction=list_only_used&map_place_hash=1%7C%7Chouse-villa-rent"
-# vila, ejare
-#APARTMENT_EJARE_ZAMIN = "https://divar.ir/s/tehran/buy-villa?has-photo=true&map_bbox=51.09297561645508%2C35.56098556518555%2C51.6052131652832%2C35.8353385925293&map_interaction=list_only_used&map_place_hash=1%7C%7Chouse-villa-sell"
-# zamin&kolangy:
-#APARTMENT_EJARE_ZAMIN = "https://divar.ir/s/tehran/buy-old-house?has-photo=true&map_bbox=51.09297561645508%2C35.56098556518555%2C51.6052131652832%2C35.8353385925293&map_interaction=list_only_used&map_place_hash=1%7C%7Cplot-old"
-CATEGORY = "apartment"  # can be 'apartment', 'zamin_kolangy', 'vila' each one in it own mongo table
-IS_EJARE = True             # can be True, False    # if True, get ejare houses (vadie, ejare atts added in same table)
-TEST_MANUAL_CARD_SELECTION = None# [('test_uid', 'https://divar.ir/v/%D8%B1%D9%87%D9%86-%D9%88-%D8%A7%D8%AC%D8%A7%D8%B1%D9%87-%D8%A2%D9%BE%D8%A7%D8%B1%D8%AA%D9%85%D8%A7%D9%86-50-%D9%85%D8%AA%D8%B1-%D9%86%D8%A7%D8%B1%D9%85%DA%A9-%DA%AF%D9%84%D8%B3%D8%AA%D8%A7%D9%86/AalI-DVB')]
+# zamin_kolangy, forosh:
+APARTMENT_EJARE_ZAMIN = "https://divar.ir/s/tehran/buy-old-house?has-photo=true&map_bbox=51.092976%2C35.517476%2C51.605213%2C35.878675&map_interaction=list_only_used&map_place_hash=1%7C%7Cplot-old"
+# zamin_kolangy, ejare:
+#APARTMENT_EJARE_ZAMIN = "nadarad"
+
+CATEGORY = "zamin_kolangy"  # can be 'apartment', 'zamin_kolangy', 'vila' each one in it own mongo table
+IS_EJARE = False             # can be True, False    # if True, get ejare houses (vadie, ejare atts added in same table)
