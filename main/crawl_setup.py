@@ -17,6 +17,7 @@ from selenium.webdriver.chrome import webdriver as chrome_webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from seleniumwire import webdriver as wire_webdriver
 
 from .methods import HumanMouseMove, retry_func, get_driver_from_redis, set_driver_to_redis
 from .serializers import logger_file
@@ -28,6 +29,8 @@ env = environ.Env()
 env.read_env(os.path.join(BASE_DIR, '.env'))
 logger = logging.getLogger('web')
 driver_logger = logging.getLogger('driver')
+logger_separation = logging.getLogger("web_separation")
+logger_file = logging.getLogger('file')
 
 lock_thread = threading.Lock()
 
@@ -97,20 +100,35 @@ def _apply_stealth_cdp(driver: webdriver.Chrome) -> None:
 
 def test_setup():
     options = Options()
-    service = Service(driver_path="/mnt/c/chrome/linux/chromedriver1-linux64/chromedriver")
-    options.binary_location = "/mnt/c/chrome/linux/chrome1-linux64/chrome"
-    # options.add_argument("--incognito")  # Enable incognito mode (disable extensions)
-    # options.add_argument('--no-sandbox')
-    # options.add_argument('--disable-dev-shm-usage')
-    # options.add_argument('--disable-gpu')
-    # options.add_argument('--disable-dev-shm-usage')
-    # options.add_argument('--ignore-certificate-errors')
-    # options.add_argument('--dns-prefetch-disable')
-    # options.add_argument('--no-proxy-server')
-    # options.add_argument('--proxy-bypass-list=*')
+    options.binary_location = env("CHROME_PATH1")
+    #options.add_argument("--headless=new")
+    # Enable performance logging (for network tracing)
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
 
-    driver = webdriver.Chrome(service=service, options=options)
-    # driver.delete_all_cookies()  # Clear all cookies
+    # Optional but useful Chrome args
+    #options.add_argument("--incognito")
+    options.add_argument("--no-sandbox")
+    #options.add_argument('--disable-dev-shm-usage')
+    # options.add_argument('--disable-gpu')
+
+    service = Service(executable_path=env("DRIVER_PATH1"))
+
+    driver = wire_webdriver.Chrome(service=service, options=options)
+
+    # Enable network domain and disable cache for consistent behavior
+    # 2) Enable Network with big buffers
+    driver.execute_cdp_cmd("Network.enable", {
+        "maxResourceBufferSize": 100 * 1024 * 1024,
+        "maxTotalBufferSize": 200 * 1024 * 1024
+    })
+    driver.execute_cdp_cmd("Network.setCacheDisabled", {"cacheDisabled": True})
+    driver.execute_cdp_cmd("Target.setAutoAttach", {
+        "autoAttach": True,
+        "waitForDebuggerOnStart": False,
+        "flatten": True  # Required to merge workers
+    })
+
     driver.maximize_window()
     return driver
 
@@ -172,7 +190,8 @@ def uc_replacement_setup(thread_name=None):
             options = Options()
             service = Service(executable_path=driver_chrome[0])
             options.binary_location = driver_chrome[1]
-            options.add_argument("--headless=new")  # if you need headless
+            options.set_capability("goog:loggingPrefs", {"performance": "ALL"})  # trace network
+            #options.add_argument("--headless=new")  # if you need headless
             #profile_dir = env('CHROME_PROFILE_PATH').format(profile_num=my_profile)
             #options.add_argument(f"--user-data-dir={profile_dir}")
             #options.add_argument(f"--profile-directory={env('CHROME_PROFILE_FOLDER')}")
@@ -180,8 +199,8 @@ def uc_replacement_setup(thread_name=None):
             # options.add_argument(f"user-data-dir={profile_path}")
             # options.add_argument("--disable-extensions")
             options.add_argument('--no-sandbox')
-            options.add_argument('--disable-dev-shm-usage')
-            options.add_argument('--disable-gpu')
+            #options.add_argument('--disable-dev-shm-usage')
+            #options.add_argument('--disable-gpu')
 
             # –– 2) Anti-detection flags
             options.add_argument("--disable-blink-features=AutomationControlled")
@@ -199,7 +218,7 @@ def uc_replacement_setup(thread_name=None):
             options.set_capability("acceptInsecureCerts", True)
             # If you had other caps: options.set_capability("someCap", someValue)
 
-            driver = webdriver.Chrome(service=service, options=options)
+            driver = wire_webdriver.Chrome(service=service, options=options)
             break
         except:
             logger.error(f"Failed initializing driver. attempts: {i+1}/{driver_load_retries}")
@@ -209,6 +228,9 @@ def uc_replacement_setup(thread_name=None):
     try:
         # –– 6) CDP stealth patch + window sizing
         _apply_stealth_cdp(driver)
+        driver.execute_cdp_cmd("Network.enable", {})
+        driver.execute_cdp_cmd("Network.clearBrowserCache", {})
+        driver.execute_cdp_cmd("Network.clearBrowserCookies", {})
         #stealth(driver, languages=["en-US", "en"], vendor="Google Inc.", platform="Win32", webgl_vendor="Intel Inc.", renderer="Intel Iris OpenGL Engine", fix_hairline=True, run_on_insecure_origins=True, hide_webdriver=True)
         # Open a blank page to start with a clean slate
         #logger.debug('before open the page')

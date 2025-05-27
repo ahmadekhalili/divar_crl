@@ -5,6 +5,7 @@ from rest_framework.response import Response
 
 from pathlib import Path
 from redis.commands.json.path import Path as RedisPath
+from mapbox_vector_tile import decode
 import numpy as np
 import random
 import time
@@ -239,3 +240,59 @@ def get_uid_url_redis():  # return (None, None) in blank is required
     except Exception as e:
         logger_file.error(f"Error getting from redis record. error: {e}")
     return uid, url
+
+
+class MapTileHandler:
+
+    def vector_to_pixel(self, x, y, extend):  # i think every site totally has same extend, but send extend value in each network request
+        px = x / extend * 256
+        py = 256 - (y / extend * 256)
+        return px, py
+
+    def get_tile_cordinator(self, url):  # return 42134,25816 from url like: https://tiles.raah.ir/tiles/high/16/42134/25816.pbf?version=3
+        pattern = r"/(\d+)/(\d+)\.pbf"
+        match = re.search(pattern, url)
+        if match:
+            return match.groups()
+        return None, None
+
+    def generate_tile_key(self, url):      # key identifier for saves, query ... in db.  like: '42134_25816'
+        tile_x_y = self.get_tile_cordinator(url)
+        return f"{tile_x_y[0]}_{tile_x_y[1]}"
+
+    def get_tile_location_and_buildings(self, pbf_url):
+        buildings_info = []   # in fastapi model field, buildings_info is list
+        pbf = requests.get(pbf_url, timeout=15).content
+        tile_dict = decode(pbf)
+        if not "Points_of_Interest" in tile_dict:
+            logger_file.info(".pbf has not 'Points_of_Interest' layer.")
+        else:
+            buildings_data = tile_dict["Points_of_Interest"]
+            buildings = buildings_data["features"]
+            extent = buildings_data.get("extent", 4096)
+
+            success, total = 0, len(buildings)
+            for i, building in enumerate(buildings):
+                px, py = None, None
+                try:
+                    vector_location = building['geometry'].get('coordinates')
+                    # building not be out of tile
+                    if vector_location and 0 <= vector_location[0] <= extent and 0 <= vector_location[1] <= extent:
+                        px, py = self.vector_to_pixel(vector_location[0], vector_location[1], extent)
+
+                        building_name = building["properties"].get("title_fa")
+                        building_icon = building["properties"].get("icon")
+                        buildings_info.append({'building_location': (px, py), 'building_name': building_name, 'building_icon': building_icon})
+                    success += 1  # out of if scop
+
+                except Exception as e:
+                    logger_file.error(f"raise error getting buildings info, skip. error: {e}")
+        logger_file.info(f"successfully extrac map buildings: {success}/{total}")
+        return buildings_info
+
+    def get_tiles_location_and_buildings(self, pbf_urls):
+        tiles_info = {}
+        for pbf_url in pbf_urls:
+            tile_x_y = self.get_tile_cordinator(pbf_url)
+            tiles_info[self.generate_tile_key(pbf_url)] = self.get_tile_location_and_buildings(pbf_url)
+        return tiles_info

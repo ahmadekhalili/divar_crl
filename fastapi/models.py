@@ -31,6 +31,9 @@ class ApartmentItem(BaseModel):  # 'category' has different db so dont save here
     image_srcs: List[str]   = Field(default_factory=list)
     image_paths: List[str]   = Field(default_factory=list)
     map_paths: List[str]   = Field(default_factory=list)
+    map_tiles_urls: List[str] = Field(default_factory=list)
+    map_tiles_buildings: Dict[str, List] = Field(default_factory=dict)
+
     specs: Dict[str, str] = Field(default_factory=dict)
     description: Optional[str] = Field("")
     agency: Optional[str] = Field("")

@@ -3,6 +3,8 @@ from runpy import run_module
 from django.conf import settings
 from django.core.files import File
 
+import re
+from collections import Counter
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -35,15 +37,16 @@ import environ
 import random
 import string
 import threading
+import json
 import time
 import re
 import os
 
-from .crawl_setup import advance_setup, uc_replacement_setup, set_driver_to_free
+from .crawl_setup import advance_setup, uc_replacement_setup, set_driver_to_free, test_setup
 from .serializers import FileMongoSerializer
 from .mongo_client import get_mongo_db
 from .redis_client import REDIS
-from .methods import add_final_card_to_redis, set_uid_url_redis, get_uid_url_redis, retry_func
+from .methods import add_final_card_to_redis, set_uid_url_redis, get_uid_url_redis, MapTileHandler
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -183,7 +186,7 @@ class RunModules:        # run a task (for example close map, go next image, ...
             logger_file.info(f"next_button not found")
             return True, ''
 
-    def zoom_canvas(self, canvas, steps: int = 7, delta: int = -200):
+    def zoom_canvas(self, canvas, steps: int = 8, delta: int = -300):
         """
         steps: number of wheel scrolls
         delta: pixes to scroll. positive → scroll down, negative → scroll up
@@ -780,6 +783,53 @@ class GetValue:       # get final values ready to add in file fields
 
         return list(image_srcs)
 
+    def fetch_urls_from_network(self):
+        urls = []
+        logs = self.driver.get_log("performance")
+        for entry in logs:
+            msg = json.loads(entry["message"])["message"]
+            if msg["method"] == "Network.responseReceived":
+                resp = msg["params"]["response"]
+                urls.append(resp.get("url", ""))
+        return urls
+
+    def fetch_urls_from_network_wire(self):
+        return list({r.url for r in self.driver.requests if "?version=3" in r.url})
+
+    def group_based_on_size(self, urls):
+        pattern = r'/high/(\d+)/'
+        urls_grouped = {}
+
+        for url in urls:
+            match = re.search(pattern, url)
+            if match:
+                num = re.search(pattern, url).group(1)  # number like: '14'
+                if num in urls_grouped:
+                    urls_grouped[num].append(url)
+                else:
+                    urls_grouped[num] = [url]
+        return urls_grouped       # {'14': [ur1, ur2], ..}
+
+    def clear_network(self):
+        urls = len(self.fetch_urls_from_network_wire())
+        #self.driver.get_log("performance")  # clear network
+        self.driver.requests.clear()
+        logger_file.debug(f"cleared network urls: {urls - len(self.fetch_urls_from_network_wire())}/{urls}")
+
+    def get_map_urls_grouped_size(self, size=None):
+        urls = self.fetch_urls_from_network_wire()    # new urls
+        logger_file.debug(f"network urls after: {urls}")
+        grouped = self.group_based_on_size(urls)  # {'14': [ur1, ur2], ..}
+        if not size:
+            return grouped
+
+        if size not in grouped:
+            logger_file.error(f"Size {size} is not exists in map urls. zizes list: {list(grouped.keys())}")
+            self.file_crawl.file_warns.append(f"Size {size} is not exists in map urls.")
+            return None
+        else:
+            return grouped[size]
+
 class FileBase:
     def __init__(self, uid):
         self.uid = uid
@@ -805,7 +855,8 @@ class Apartment:
             'price_per_meter': None, 'floor_number': None, 'general_features': [], 'description': '', 'tags': [],
             'agency': None, 'rough_time': '', 'rough_address': '',
             'vadie': None, 'ejare': None, 'vadie_exchange': None,      # just for ejare files, vadie_exchange means can ejare vadie can be exchange or not, it is str
-            'image_srcs': [], 'specs': {}, 'features': [], 'url': None
+            'image_srcs': [], 'map_paths': [], 'map_tiles_urls': [], 'map_tiles_buildings': {},
+            'specs': {}, 'features': [], 'url': None
         }
         self.file_errors = []
         self.file_warns = []
@@ -876,6 +927,7 @@ class Apartment:
 
     def crawl_map(self, driver):
         run_modules = RunModules(driver, self)
+        get_value = GetValue(driver, self)
         map_paths = []
         map_opended = False
         run_modules.available_map_element = False  # can set True in open_map, False means there isnt any map for the file so dont add error of like: "unable to find map .." in self.file_errors
@@ -893,8 +945,18 @@ class Apartment:
             elif run_modules.available_map_element:
                 self.file_errors.append(is_uploaded[1])
 
+            get_value.clear_network()
             # 4. Zoom in default steps of zoom_canvas
             run_modules.zoom_canvas(canvas)
+            time.sleep(1.2)
+            urls = get_value.get_map_urls_grouped_size(size='16')
+            if urls:
+                self.file['map_tiles_urls'] = urls
+                map_tile_handler = MapTileHandler()
+                self.file['map_tiles_buildings'] = map_tile_handler.get_tiles_location_and_buildings(urls)
+                logger_file.info(f"successfully filled 'map_tiles_buildings'. {len(self.file['map_tiles_buildings'])} map tiles")
+            else:
+                logger_file.error(f"not found any urls in the network for map tiles.")
             time.sleep(5)
             is_uploaded2 = run_modules.upload_map_image(canvas, self.screenshot_map_path, "zoom_view.png")
             if is_uploaded2[0]:
@@ -1311,6 +1373,46 @@ def crawl_file():  # each thread runs separatly
                 set_driver_to_free(threading.current_thread().name, is_saved_to_redis, errors)  # required put before "if driver", driver could be None after uc_replacement_setup.get_driver_chrome and before reaching to uc_replacement_setup.driver = webdriver.Chrome..
 
 
-def test_crawl(url="https://divar.ir"):
-    driver = advance_setup()
-    driver.get(url)
+
+def test_crawl(uid, url):
+    category = settings.CATEGORY
+    is_ejare = settings.IS_EJARE
+    driver = None
+    try:  # "retry for re crawl the file. attempts: {i + 1}/{max_retry}" f"max retry. going to refetch from redis."
+        driver = test_setup()
+        if category == 'apartment':
+            file_instance = Apartment
+        elif category == 'zamin_kolangy':
+            file_instance = ZaminKolangy
+        elif category == 'vila':
+            file_instance = Vila
+        logger_separation.info("")
+        logger_separation.info("----------")
+        logger_file.info(f"--going to card {uid}. card url: {url}")
+        driver.get(url)
+        time.sleep(2)
+        file_crawl = file_instance(uid=uid, is_ejare=is_ejare)
+        logger_file.info(f"selected file_crawl category {category}: {file_crawl}")
+        try:
+            file_crawl.file['url'] = url  # save url before crawl others
+            file_crawl.file['uid'] = uid
+            file_crawl.run(driver)  # fills .file
+
+            if settings.WRITE_REDIS_MONGO:  # is_ejare should no conflicts with 'ejare' price inside redis
+                add_final_card_to_redis({**file_crawl.file, "category": category, "is_ejare": is_ejare},
+                                        {"file_errors": file_crawl.file_errors, 'file_warns': file_crawl.file_warns}
+                                        # keys should be same with file_crawl attrs
+                                        )
+                is_saved_to_redis = True
+
+        except Exception as e:
+            logger_file.error(f"failed cart to crawl. error: {e}")
+            raise
+
+    except Exception as e:
+        print(f"Failed totally. error: {e}")
+
+    finally:
+        if driver:
+            driver.quit()
+            logger.info(f"card crawler quited clean.")
