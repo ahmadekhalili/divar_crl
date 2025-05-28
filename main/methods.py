@@ -242,7 +242,7 @@ def get_uid_url_redis():  # return (None, None) in blank is required
     return uid, url
 
 
-class MapTileHandler:
+class MapTileHandlerBalad:  # in crawl, its for divar canvas
 
     def vector_to_pixel(self, x, y, extend):  # i think every site totally has same extend, but send extend value in each network request
         px = x / extend * 256
@@ -296,3 +296,10 @@ class MapTileHandler:
             tile_x_y = self.get_tile_cordinator(pbf_url)
             tiles_info[self.generate_tile_key(pbf_url)] = self.get_tile_location_and_buildings(pbf_url)
         return tiles_info
+
+    def download_pbfs(self, start_x, start_y, end_x, end_y):
+        pass
+
+
+class MapTileHandlerDivar(MapTileHandlerBalad):  # url of pbfs is exact same
+    pass

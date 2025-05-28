@@ -15,7 +15,7 @@ from .crawl import get_files, test_crawl
 from .crawl_setup import advance_setup, test_setup, uc_replacement_setup, set_driver_to_free
 from .serializers import FileMongoSerializer
 from .mongo_client import get_mongo_db, ConnectionFailure
-from .methods import add_final_card_to_redis, write_by_django, set_uid_url_redis, logger_file, MapTileHandler
+from .methods import add_final_card_to_redis, write_by_django, set_uid_url_redis, logger_file, MapTileHandlerBalad
 from .redis_client import REDIS as r
 
 logger = logging.getLogger('web')
@@ -34,17 +34,18 @@ env = environ.Env()
 environ.Env.read_env(os.path.join(Path(__file__).resolve().parent.parent.parent, '.env'))
 import redis
 
-def test(request):
-    #get_mongo_db()['test'].insert_one({'message': 'hi2'})
-    #url = "https://divar.ir/s/tehran/buy-apartment"
-    #thread_name = 'test'
-    #driver = test_setup()
-    #driver.get(url)  # Load the web page
-    #title = driver.title
-    print('1111111111111')
-    map_handler = MapTileHandler()
-    L = map_handler.get_location_and_buildings("https://tiles.raah.ir/tiles/high/16/42130/25800.pbf?version=3")
-    return HttpResponse(f"success: {L}")
+class test(APIView):
+    def get(self, request):
+        #get_mongo_db()['test'].insert_one({'message': 'hi2'})
+        #url = "https://divar.ir/s/tehran/buy-apartment"
+        #thread_name = 'test'
+        #driver = test_setup()
+        #driver.get(url)  # Load the web page
+        #title = driver.title
+        print('1111111111111')
+        map_handler = MapTileHandlerBalad()
+        L = map_handler.get_tile_location_and_buildings("https://tiles.raah.ir/tiles/high/16/42133/25817.pbf?version=3")
+        return Response({'success': L})
 
 
 class CrawlView(APIView):

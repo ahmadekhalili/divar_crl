@@ -46,7 +46,7 @@ from .crawl_setup import advance_setup, uc_replacement_setup, set_driver_to_free
 from .serializers import FileMongoSerializer
 from .mongo_client import get_mongo_db
 from .redis_client import REDIS
-from .methods import add_final_card_to_redis, set_uid_url_redis, get_uid_url_redis, MapTileHandler
+from .methods import add_final_card_to_redis, set_uid_url_redis, get_uid_url_redis, MapTileHandlerDivar
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -951,10 +951,10 @@ class Apartment:
             time.sleep(1.2)
             urls = get_value.get_map_urls_grouped_size(size='16')
             if urls:
+                map_tile_handler = MapTileHandlerDivar()
                 self.file['map_tiles_urls'] = urls
-                map_tile_handler = MapTileHandler()
                 self.file['map_tiles_buildings'] = map_tile_handler.get_tiles_location_and_buildings(urls)
-                logger_file.info(f"successfully filled 'map_tiles_buildings'. {len(self.file['map_tiles_buildings'])} map tiles")
+                logger_file.info(f"successfully filled 'map_tiles_urls'. {len(self.file['map_tiles_urls'])} map tiles urls")
             else:
                 logger_file.error(f"not found any urls in the network for map tiles.")
             time.sleep(5)

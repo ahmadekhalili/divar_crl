@@ -322,7 +322,7 @@ CARDS_EACH_DRIVER = 7    # how much cards crawl with each driver. agent and .. r
 MAX_FILE_CRAWL = 1   # number of files to crawl
 MAX_IMAGE_CRAWL = 50  # skip further images, if a file has more that 20 images
 WRITE_REDIS_MONGO = True   # add each crawled card to redis (enable redis/mongo flow | use django own db)
-TEST_MANUAL_CARD_SELECTION = [('test_uid', 'https://divar.ir/v/%D9%85%D8%AD%D8%AF%D9%88%D8%AF%D9%87-%D9%85%D8%AA%D8%B1%D9%88-%D8%AE%D9%88%D8%A7%D8%AC%D9%87-%D8%B9%D8%A8%D8%AF%D8%A7%D9%84%D9%84%D9%87-%DB%B5%DB%B0%D9%85%D8%AA%D8%B1-%D9%85%D9%86%D8%A7%D8%B3%D8%A8-%D9%85%D8%AC%D8%B1%D8%AF/AaxEu_QO')]
+TEST_MANUAL_CARD_SELECTION = None#[('test_uid', 'https://divar.ir/v/%D9%85%D8%AD%D8%AF%D9%88%D8%AF%D9%87-%D9%85%D8%AA%D8%B1%D9%88-%D8%AE%D9%88%D8%A7%D8%AC%D9%87-%D8%B9%D8%A8%D8%AF%D8%A7%D9%84%D9%84%D9%87-%DB%B5%DB%B0%D9%85%D8%AA%D8%B1-%D9%85%D9%86%D8%A7%D8%B3%D8%A8-%D9%85%D8%AC%D8%B1%D8%AF/AaxEu_QO')]
 
 # apartment, ejare
 #APARTMENT_EJARE_ZAMIN =  "https://divar.ir/s/tehran/rent-apartment?has-photo=true&map_bbox=51.09297561645508%2C35.56098556518555%2C51.6052131652832%2C35.8353385925293&map_interaction=list_only_used&map_place_hash=1%7C%7Capartment-rent"
