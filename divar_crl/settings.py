@@ -12,14 +12,19 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from urllib.parse import quote_plus
 from pathlib import Path
 import environ
-#import redis
+import platform
+
 import os
+
+from central_logging import CENTRAL_LOGGING_CONFIG
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
 env.read_env(os.path.join(BASE_DIR, '.env'))
 
+# Detect OS
+os_type = platform.system()
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -101,104 +106,7 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 for fn in ("django.log", "web.log", "file.log"):
     (LOG_DIR / fn).touch(exist_ok=True)
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '[%(asctime)s] %(levelname)s [%(threadName)s] %(message)s',
-            'datefmt': '%Y-%m-%d %H:%M:%S',
-        },
-        'indented': {  # additional space in first ('  ')
-            'format': '  [%(asctime)s] %(levelname)s [%(threadName)s] %(message)s',  # [%(name)s:%(lineno)s]
-            'datefmt': '%Y-%m-%d %H:%M:%S',
-        },
-        'card_separation': {
-            'format': '%(message)s',
-        },
-        'simple': {
-            'format': '%(levelname)s %(message)s',
-        },
-    },
-    'handlers': {
-        # Handler for Django/system logs
-        'django_file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'django.log'),
-            'formatter': 'verbose',
-            'encoding': 'utf-8',
-        },
-        # Handler for web logs (you decide when to log)
-        'web_file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'web.log'),
-            'formatter': 'verbose',
-            'encoding': 'utf-8',
-        },
-        'web_file_separation': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'web.log'),
-            'formatter': 'card_separation',
-            'encoding': 'utf-8',
-        },
-        'file_file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'web.log'),
-            'formatter': 'indented',
-            'encoding': 'utf-8',
-        },
-        'driver_handler': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'driver.log'),
-            'formatter': 'verbose',
-            'encoding': 'utf-8',
-        },
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-            'level': 'INFO',
-        },
-        'console_file': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'indented',
-            'level': 'INFO',
-        },
-    },
-    'loggers': {
-        # Logger for Django/system logs (internal and framework-level)
-        'django': {
-            'handlers': ['django_file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        # Logger for web logging: use this when you explicitly call logging.getLogger('web')
-        'web': {
-            'handlers': ['web_file', 'console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-        'web_separation': {   # show separation of cards (like "----------') without any prestring
-            'handlers': ['web_file_separation', 'console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-        'file': {     # show logs when crawl inside a file (shows with additional '  ' space)
-            'handlers': ['file_file', 'console_file'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-        'driver': {  # show logs only for driver controlling (unctrolable in multi thread logs)
-            'handlers': ['driver_handler', 'console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-    },
-}
+LOGGING = CENTRAL_LOGGING_CONFIG
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
@@ -268,6 +176,16 @@ MONGO_PORT = int(os.environ.get('MONGO_PORT', 27017))
 # It's often useful to construct the URI here as well
 MONGO_URI = f"mongodb://{MONGO_USER_NAME}:{MONGO_USER_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DBNAME}?authSource={MONGO_SOURCE}"
 
+if os_type == "Windows":
+    DRIVER_PATH1 = env("DRIVER_PATH1_win")
+    CHROME_PATH1 = env("CHROME_PATH1_win")
+elif os_type == "Linux":
+    DRIVER_PATH1 = env("DRIVER_PATH1")
+    CHROME_PATH1 = env("CHROME_PATH1")
+else:
+    raise EnvironmentError("Unsupported OS for DRIVER_PATH1")
+
+
 AGENTS = [
     # macOS Safari
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.1",
@@ -316,13 +234,15 @@ AGENTS = [
 ]
 RETRY_FOR_DRIVER = 2      # retry numbers to attempt and wait to find free driver and exit the card crawler thread?
 CARD_CRAWLER_PENDDINGS = 20     # in sec; how much wait and exit thread.
-DRIVERS_COUNT = 2         # important; number of drivers & chrome to use. crawl threads = DRIVERS_COUNT-1. redis connection = DRIVERS_COUNT + 5
+DRIVERS_COUNT = 3         # important; number of drivers & chrome to use. crawl threads = DRIVERS_COUNT-1. redis connection = DRIVERS_COUNT + 5
 CARDS_EACH_DRIVER = 7    # how much cards crawl with each driver. agent and .. refresh after CARDS_EACH_DRIVER cards crawled
 
-MAX_FILE_CRAWL = 1   # number of files to crawl
+MAX_FILE_CRAWL = 2   # number of files to crawl
 MAX_IMAGE_CRAWL = 50  # skip further images, if a file has more that 20 images
 WRITE_REDIS_MONGO = True   # add each crawled card to redis (enable redis/mongo flow | use django own db)
-TEST_MANUAL_CARD_SELECTION = None#[('test_uid', 'https://divar.ir/v/%D9%85%D8%AD%D8%AF%D9%88%D8%AF%D9%87-%D9%85%D8%AA%D8%B1%D9%88-%D8%AE%D9%88%D8%A7%D8%AC%D9%87-%D8%B9%D8%A8%D8%AF%D8%A7%D9%84%D9%84%D9%87-%DB%B5%DB%B0%D9%85%D8%AA%D8%B1-%D9%85%D9%86%D8%A7%D8%B3%D8%A8-%D9%85%D8%AC%D8%B1%D8%AF/AaxEu_QO')]
+
+# ignore all threads, only 1 thread
+TEST_MANUAL_CARD_SELECTION = [('test_uid', 'https://divar.ir/v/%D9%85%D8%AD%D8%AF%D9%88%D8%AF%D9%87-%D9%85%D8%AA%D8%B1%D9%88-%D8%AE%D9%88%D8%A7%D8%AC%D9%87-%D8%B9%D8%A8%D8%AF%D8%A7%D9%84%D9%84%D9%87-%DB%B5%DB%B0%D9%85%D8%AA%D8%B1-%D9%85%D9%86%D8%A7%D8%B3%D8%A8-%D9%85%D8%AC%D8%B1%D8%AF/AaxEu_QO')]
 
 # apartment, ejare
 #APARTMENT_EJARE_ZAMIN =  "https://divar.ir/s/tehran/rent-apartment?has-photo=true&map_bbox=51.09297561645508%2C35.56098556518555%2C51.6052131652832%2C35.8353385925293&map_interaction=list_only_used&map_place_hash=1%7C%7Capartment-rent"
@@ -339,3 +259,5 @@ APARTMENT_EJARE_ZAMIN =  "https://divar.ir/s/tehran/buy-apartment?has-photo=true
 
 CATEGORY = "apartment"  # can be 'apartment', 'zamin_kolangy', 'vila' each one in it own mongo table
 IS_EJARE = False             # can be True, False    # if True, get ejare houses (vadie, ejare atts added in same table)
+
+UPDATE_PERIOD = ['1 day', '1 week', 'unlimited']

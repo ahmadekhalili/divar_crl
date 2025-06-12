@@ -1,11 +1,14 @@
-import logging
-from log_handler import init_logging
-init_logging()    # should import before critical local imports. now can use logging.ge..
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))  # Add parent directory to Python path to import central_logging
+# now you should import packages from django root dir as source
+
+from central_logging import init_central_logging, get_logger
+init_central_logging()
 
 from fastapi import HTTPException
 from httpx import AsyncClient, Limits, HTTPError
 from typing import List, Dict
-from pathlib import Path
 import redis.asyncio as redis
 from pymongo import ReturnDocument
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -14,6 +17,7 @@ from typing import Any
 import aiofiles
 import urllib.parse
 import environ
+import logging
 import os
 import sys
 import json
@@ -22,21 +26,21 @@ from zoneinfo import ZoneInfo
 import django
 from django.conf import settings
 
-from mongo_client import db
-from models import ApartmentItem
+from fastapi_app.mongo_client import db
+from fastapi_app.models import ApartmentItem
+from divar_crl.settings import DEBUG
 
 # Step 1: Add project root (C:\backs\divar_crl) to sys.path
-BASE_DIR = Path(__file__).resolve().parent.parent  # Move one level up from fastapi/
-sys.path.append(str(BASE_DIR))  # from you can imports from django root, from divar_crl import settings  # ✅ Works because divar_crl/ is now on sys.path
-from divar_crl.settings import DEBUG
+BASE_DIR = Path(__file__).resolve().parent.parent  # This gives you: django_root/
+
 
 env = environ.Env()
 env.read_env(os.path.join(BASE_DIR, '.env'))
 
 r = redis.Redis()
 
-card_logger = logging.getLogger('cards')
-logger = logging.getLogger('fastapi')
+card_logger = get_logger('cards')
+logger = get_logger('fastapi')
 
 
 class FileCrawl:
@@ -150,12 +154,8 @@ async def save_to_mongodb(data: Dict[str, Any], filecrawl):  # dont sames multip
         # doc["_id"] = item.uid
 
         # 4. Upsert into `file` collection
-        if data['category'] == "apartment":  # item has not category key
-            result = await db.apartment.insert_one(doc)
-        elif data['category'] == "zamin_kolangy":
-            result = await db.zamin_kolangy.insert_one(doc)
-        elif data['category'] == "vila":
-            result = await db.vila.insert_one(doc)
+        collection = getattr(db, data['category'])
+        result = await collection.insert_one(doc)
         logger.info("Inserted new document in mongo db with _id=%s", result.inserted_id)
         uid, url = getattr(filecrawl, 'uid', None), getattr(filecrawl, 'url', None)
         file_errors, file_warns = getattr(filecrawl, 'file_errors', None), getattr(filecrawl, 'file_warns', None)

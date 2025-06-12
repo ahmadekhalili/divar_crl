@@ -42,27 +42,38 @@ class ApartmentItem(BaseModel):  # 'category' has different db so dont save here
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
 
+    expired: bool = False
+
     @validator("phone")
     def phone_must_be_positive(cls, v):
         if v is not None and v < 0:
             raise ValueError("Phone number must be positive")
         return v
 
+    @staticmethod
+    async def index_creation(mongo_db):
+        await mongo_db.apartment.create_index("uid")  # .create_index("uid", unique=True)
+        await mongo_db.zamin_kolangy.create_index("uid")
+        await mongo_db.vila.create_index("uid")
 
-class ZaminKolangyItem(BaseModel):
-    uid: str   # required, id created for each file by divar
-    sell_ejare: str
-    phone: Optional[int] = Field(None, description="Phone number, None if unavailable")
-    title: str = Field(..., max_length=255, description="Listing title")
-    rough_time: str = Field("", max_length=255, description="time file posted to divar like: نیم ساعت پیش")
-    rough_address: str = Field("", max_length=255)
-    metraj: Optional[str] = Field("", max_length=50)  # if not provided value, set to blank str and dont raise error
-    total_price: Optional[str] = Field("", max_length=100)
-    price_per_meter: Optional[str] = Field("", max_length=100)
-    tags: List[str] = Field(default_factory=list)
-    image_srcs: List[str]   = Field(default_factory=list)
-    image_paths: List[str]   = Field(default_factory=list)
-    map_paths: List[str]   = Field(default_factory=list)
-    description: Optional[str] = Field("")
-    agency: Optional[str] = Field("")
-    url: str
+        await mongo_db.apartment.create_index("expired")
+        await mongo_db.zamin_kolangy.create_index("expired")
+        await mongo_db.vila.create_index("expired")
+
+        await mongo_db.apartment.create_index("created")
+        await mongo_db.zamin_kolangy.create_index("created")
+        await mongo_db.vila.create_index("created")
+
+    @staticmethod
+    async def index_deletaion(mongo_db):  # for apply new indexes without error
+        await mongo_db.apartment.drop_index("uid_1")  # .create_index("uid", unique=True)
+        await mongo_db.zamin_kolangy.drop_index("uid_1")
+        await mongo_db.vila.drop_index("uid_1")
+
+        await mongo_db.apartment.drop_index("expired_1")
+        await mongo_db.zamin_kolangy.drop_index("expired_1")
+        await mongo_db.vila.drop_index("expired_1")
+
+        await mongo_db.apartment.drop_index("created_1")
+        await mongo_db.zamin_kolangy.drop_index("created_1")
+        await mongo_db.vila.drop_index("created_1")

@@ -7,6 +7,8 @@ from main.crawl import get_files, crawl_file, test_crawl
 from main.methods import write_by_django, add_driver_to_redis
 
 import os
+import sys
+import signal
 import logging
 import environ
 import threading
@@ -19,20 +21,40 @@ env = environ.Env()
 env.read_env(os.path.join(BASE_DIR, '.env'))
 
 
-class Command(BaseCommand):   # 3 thread of craw card and 1 thread of find_cards so need 4 separate driver
+class Command(BaseCommand):
     help = "Launch the Divar crawler in a 3-thread pool (no web requests)."
 
+    def __init__(self):
+        super().__init__()
+        self.shutdown_event = threading.Event()
+
+    def signal_handler(self, signum, frame):
+        self.stdout.write(self.style.WARNING('Received interrupt signal. Shutting down...'))
+        self.shutdown_event.set()
+        sys.exit(0)
+
     def handle(self, *args, **options):
+        # When you press Ctrl+C, OS sends SIGINT signal and so calls self.signal_handler
+        signal.signal(signal.SIGINT, self.signal_handler)
+        signal.signal(signal.SIGTERM, self.signal_handler)
+
         max_files = settings.MAX_FILE_CRAWL
         location_to_search = 'کیانشهر'
-
-
 
         test_uids_urls = settings.TEST_MANUAL_CARD_SELECTION
         if test_uids_urls:
             with ThreadPoolExecutor(max_workers=1, thread_name_prefix="test_thread") as executor:
                 task = executor.submit(test_crawl, test_uids_urls[0][0], test_uids_urls[0][1])
                 try:
+                    # Use timeout to allow periodic checking for interrupts
+                    result = task.result(timeout=1.0)
+                    logger.debug("Thread finished: %s", result)
+                except TimeoutError:
+                    # Check if shutdown was requested
+                    if self.shutdown_event.is_set():
+                        task.cancel()
+                        return
+                    # Continue waiting
                     result = task.result()
                     logger.debug("Thread finished: %s", result)
                 except Exception as e:

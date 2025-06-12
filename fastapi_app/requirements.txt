@@ -9,3 +9,4 @@ django-environ
 redis
 python-multipart
 django
+pymongo

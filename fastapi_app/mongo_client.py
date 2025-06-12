@@ -1,4 +1,5 @@
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import MongoClient
 from pathlib import Path
 import environ
 import asyncio
@@ -14,3 +15,6 @@ env.read_env(os.path.join(BASE_DIR, '.env'))
 # ─── MongoDB setup ─────────────────────────────────────────────────────────────
 client = AsyncIOMotorClient("mongodb://localhost:27017")
 db = client[f"{env('MONGO_DBNAME')}"]
+
+client_sync = MongoClient("mongodb://localhost:27017")
+db_sync = client_sync[f"{env('MONGO_DBNAME')}"]

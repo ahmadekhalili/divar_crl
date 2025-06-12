@@ -1,111 +1,194 @@
-## installation:
+# 🏠 Divar CRL - Real Estate Crawler
+
+A Django-based web crawler system for scraping real estate listings from Divar.ir with multi-threaded processing and advanced data extraction capabilities.
+
+## 🚀 Quick Start
+
+### 1. Prerequisites Installation
+
+#### 📦 Required Services
+```bash
+# MongoDB
 https://www.mongodb.com/try/download/community
 https://www.mongodb.com/try/download/shell
 net start MongoDB
 
+# Redis
+docker run -d --name redis -p 6379:6379 -v redis_data:/data redis/redis-stack-server:latest
 
+# PostgreSQL (optional)
+# Run on localhost:5432
+```
+
+#### 🍃 MongoDB Setup
+```bash
 mongo
 > use admin
 db.createUser({
-    user:   "akh",
-    pwd:    "a13431343",
-    roles: [ { role: "readWrite", db: "divar" } ]
-  })
-
-
-- run postgres (localhost, 5432)
-- run mongo (localhost, default port)
-- run redis (localhost, 6379), `docker run -d --name redis -p 6379:6379 -v redis_data:/data redis/redis-stack-server:latest`
-- run fastapi (8001).
-
-## setup:
-### .env:
+    user: "akh",
+    pwd: "a13431343",
+    roles: [{ role: "readWrite", db: "divar" }]
+})
 ```
-TEST_RESERVATION=True  # if be True, last submit button will not be pressed (used for test environments)
-SECURE_SSL_REDIRECT=False  # False in test environments without ssl domain
-#DRIVER_PATH=C:\\Users\\Admin\\.wdm\\drivers\\chromedriver\\win64\\135.0.7049.97\\chromedriver-win32\\chromedriver.exe
-#CHROME_PATH=C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe
+
+### 2. Environment Configuration
+
+Create `.env` file in project root:
+
+```env
+# 🧪 Testing Configuration
+SECURE_SSL_REDIRECT=False  # Disable for local development
+
+# 🖥️ WebDriver Configuration (Linux)
 DRIVER_PATH1=/mnt/c/chrome/linux/chromedriver-linux64-1/chromedriver
 CHROME_PATH1=/mnt/c/chrome/linux/chrome-headless-shell-linux64-1/chrome-headless-shell
-CHROME_PROFILE_PATH=/mnt/c/chrome/linux/User-Data
-CHROME_PROFILE_FOLDER=Profile-3
-#CHROME_PROFILE_PATH=C:\\Users\\Admin\\AppData\\Local\\Google\\Chrome\\User Data
-#CHROME_PROFILE_FOLDER=Profile 7
-EXTENSION_PATH=C:\\10\\xa\\nobat\\scripts\\extension_minimize
-WINDOWS_CRAWL=True  # Set to False on Linux
+
+# 🪟 WebDriver Configuration (Windows)
+DRIVER_PATH1_win=C:\chrome\chromedriver-win64-1\chromedriver.exe
+CHROME_PATH1_win=C:\chrome\chrome-win64-1\chrome.exe
+
+# 👤 Chrome Profile (optional)
+CHROME_PROFILE_PATH=C:\\Users\\Admin\\AppData\\Local\\Google\\Chrome\\User Data
+CHROME_PROFILE_FOLDER=Profile 7
+
+# 🔑 Database Credentials
 REDIS_PASS=
 POSTGRES_DBNAME=divar
 POSTGRES_USERNAME=postgres
 POSTGRES_USERPASS=a13431343
-POSTGRES_DBNAME_CHANEL=
-POSTGRES_USERNAME_CHANEL=
-POSTGRES_USERPASS_CHANEL=
 MONGO_USER_NAME=akh
 MONGO_USER_PASS=a13431343
 MONGO_DBNAME=divar
 MONGO_SOURCE=admin
 MONGO_HOST=127.0.0.1
+
+# 📁 File Paths
 SCREENSHOT_IMAGE_PATH=media/file_{uid}/file_images
 screenshot_map_path=media/file_{uid}/file_mapes
-
 ```
 
+### 3. Core Configuration
 
-### settings.py
-APARTMENT_EJARE_ZAMIN = "https//:..."
-CATEGORY = "apartment"  # can be 'apartment', 'zamin_kolangy', 'vila'
-IS_EJARE = True
-TEST_MANUAL_CARD_SELECTION = None
+Configure crawler settings in `divar_crl/settings.py`:
 
-**`APARTMENT_EJARE_ZAMIN:`**
-apartment and ejare and zamin saves in different dbs. you have to specify url, to crawl each of them by specify settings.APARTMENT_EJARE_ZAMIN.  
-Note: each of categories ejera has difference url. so for switch to ejare each of them should specify its url. so apartment ejare, vali ejera,.. has differrent url.  
-it is also possible to set files only contain images or only videos or no images ... here.
+```python
+# 🎯 Target Configuration (must be set together!)
+APARTMENT_EJARE_ZAMIN = "https://divar.ir/s/tehran/buy-apartment"
+CATEGORY = "apartment"  # Options: 'apartment', 'zamin_kolangy', 'vila'
+IS_EJARE = False  # True for rental, False for sale
 
-**`CATEGORY:`**
-set CATEGORY based on APARTMENT_EJARE_ZAMIN selection.
-
-**`IS_EJARE:`**
-can be True, False  
-if True, get ejare houses (vadie, ejare atts added in same table). also APARTMENT_EJARE_ZAMIN should change based on it.
-
-**all these 3 settings confs should change with each other!**  
-
-**`TEST_MANUAL_CARD_SELECTION:`**
-to test specefic file crawling in divar, set settings.TEST_MANUAL_CARD_SELECTION, or `None` in production and pass to crawl_files. structure: `[(file_uid, file_url)]`
-
-**to check driver**
-/mnt/c/chrome/linux/chrome-headless-shell-linux64-1/chrome --version  
-
-**DRIVER_PATH1:**
-all others drivers and chromes will be set auto. just first driver and chrome required.  
-
-
-## developer section section
-notes:
-- dont change fastapi roots. to upload file images in fastapi, django media dir calculate from one back of fastapi dir .
-
-
-### why not reraise
-why not **reraise** for upstream?
+# 🧪 Testing
+TEST_MANUAL_CARD_SELECTION = None  # or [(file_uid, file_url)] for specific testing
 ```
-def open_map(self):
-    try:
-        ...
-    except Exception as e:
-        logger_file.error(f"failed opening the map of the file. error: {e}")
-        self.file.file_errors.append(f"failed opening the map of the file.")
-        raise      # reraise for upstream (should stop map crawling)
 
+## 🎮 Running the Crawler
 
-try:
-    map_opended = run_modules.open_map()
-    canvas = driver.find_element(By.CSS_SELECTOR, "canvas.mapboxgl-canvas")
-            logger_file.info(f"bool map's canvas: {bool(canvas)}")
-    ...
-except Exception as e:    
-    message = f"Exception in map section. error: {e}"
-    logger_file.error(message)
-    self.file_errors.append(f"Some Fails in map section.")
+### Main Commands
+
+```bash
+# 🏃‍♂️ Start main crawler (multi-threaded)
+python manage.py crawl
+
+# 🔄 Update existing listings and mark expired
+python manage.py update
+
+# 🌐 Run Django development server
+python manage.py runserver
+
+# ⚡ Start FastAPI service (port 8001)
+uvicorn fastapi_app.main:app --port 8001
 ```
-unexpected happend here, we dont want raise two time for just open_map
+
+### Test Endpoints
+
+Access test features via Django views:
+- `http://localhost:8000/api/` - REST API endpoints for testing
+
+## ⚙️ Configuration Details
+
+### 🎯 Target Settings
+All three settings must be configured together:
+
+| Setting | Description | Example Values |
+|---------|-------------|----------------|
+| `APARTMENT_EJARE_ZAMIN` | Target URL for crawling | Different URLs for each category/type |
+| `CATEGORY` | Property type | `apartment`, `zamin_kolangy`, `vila` |
+| `IS_EJARE` | Rental vs Sale | `True` (rental), `False` (sale) |
+
+### 🚗 Multi-Driver Setup
+
+Only configure **Driver 1** in `.env` - additional drivers are auto-generated:
+
+```env
+# ✅ Configure only Driver 1
+DRIVER_PATH1=/path/to/chromedriver1
+CHROME_PATH1=/path/to/chrome1
+
+# ⚡ Auto-generated from template:
+# DRIVER_PATH2, DRIVER_PATH3, DRIVER_PATH4...
+# CHROME_PATH2, CHROME_PATH3, CHROME_PATH4...
+```
+
+**Example Auto-generation:**
+```
+Driver 1: /mnt/c/chrome/linux/chromedriver-linux64-1/chromedriver
+Driver 2: /mnt/c/chrome/linux/chromedriver-linux64-2/chromedriver
+Driver 3: /mnt/c/chrome/linux/chromedriver-linux64-3/chromedriver
+```
+
+### 🔍 Testing Specific Properties
+
+For testing specific listings:
+```python
+# In settings.py
+TEST_MANUAL_CARD_SELECTION = [
+    ("abc123", "https://divar.ir/v/apartment-xyz"),
+    ("def456", "https://divar.ir/v/villa-abc")
+]
+```
+
+## 🏗️ Architecture Overview
+
+### Core Components
+- **Django App** (`main/`): Crawler logic, REST API, management commands
+- **FastAPI Service** (`fastapi_app/`): File uploads, MongoDB operations
+- **Multi-threading**: Configurable driver pool with Redis coordination
+- **Property Classes**: `Apartment`, `Vila`, `ZaminKolangy` with specialized extraction
+
+### 📊 Data Flow
+1. **Crawl Command** → Multi-threaded property discovery
+2. **Redis Queue** → Task coordination between drivers  
+3. **MongoDB** → Primary data storage
+4. **File System** → Images and map screenshots
+
+## 🔧 Developer Notes
+
+### 🛠️ Driver Verification
+```bash
+# Check driver version
+/mnt/c/chrome/linux/chrome-headless-shell-linux64-1/chrome --version
+```
+
+### ⚠️ Important Notes
+- **FastAPI Root**: Don't change FastAPI directory structure - Django media paths are calculated relative to FastAPI location
+- **Error Handling**: Errors are logged but don't re-raise to prevent double exceptions
+- **Thread Safety**: Use Redis for driver coordination in multi-threaded environment
+
+### 📝 Logging
+Centralized logging with separate files:
+- `django.log`, `driver.log`, `redis.log`, `fastapi.log`, `cards.log`
+
+## 🎯 Property Types Supported
+
+| Type | Description | Special Features |
+|------|-------------|------------------|
+| 🏠 **Apartment** | Full residential units | Floor, elevator, parking details |
+| 🏘️ **Vila** | Villa properties | Land area, different pricing structure |
+| 🏞️ **ZaminKolangy** | Land/old houses | Simplified data model |
+
+## 📋 Service Dependencies
+
+- **MongoDB** (port 27017) - Required for data storage
+- **Redis** (port 6379) - Required for task coordination  
+- **FastAPI** (port 8001) - Required for file operations
+- **PostgreSQL** (port 5432) - Optional additional database

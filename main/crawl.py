@@ -1,11 +1,13 @@
-from runpy import run_module
+from central_logging import init_central_logging, get_logger
+init_central_logging()
 
+from runpy import run_module
 from django.conf import settings
 from django.core.files import File
 
 import re
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timedelta
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -32,7 +34,6 @@ from PIL import Image
 
 from pathlib import Path
 import jdatetime
-import logging
 import environ
 import random
 import string
@@ -46,15 +47,16 @@ from .crawl_setup import advance_setup, uc_replacement_setup, set_driver_to_free
 from .serializers import FileMongoSerializer
 from .mongo_client import get_mongo_db
 from .redis_client import REDIS
-from .methods import add_final_card_to_redis, set_uid_url_redis, get_uid_url_redis, MapTileHandlerDivar
+from .methods import add_final_card_to_redis, set_uid_url_redis, get_uid_url_redis, MapTileHandlerDivar, get_files_for_update_redis
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env()
 env.read_env(os.path.join(BASE_DIR, '.env'))
-logger = logging.getLogger('web')
-logger_separation = logging.getLogger("web_separation")
-logger_file = logging.getLogger('file')
+logger = get_logger('web')
+logger_separation = get_logger("web_separation")
+logger_file = get_logger('file')
+logger_card = get_logger('card')  # fastapi looger
 
 _pop_lock = threading.Lock()
 
@@ -674,7 +676,7 @@ class GetValue:       # get final values ready to add in file fields
         )
         logger_file.debug(f"slides numbers founded: {len(slides)}")
         if not slides:
-            logger_file.warning("No slides found in slider.")
+            #logger_file.warning("No slides found in slider.")
             return None
 
         container = driver.find_element(By.CSS_SELECTOR, '.keen-slider')
@@ -689,7 +691,7 @@ class GetValue:       # get final values ready to add in file fields
             slides[0]
         )
 
-        logger_file.info(f"Looking through {len(slides)} slides (width={slide_width}px)")
+        #logger_file.info(f"Looking through {len(slides)} slides (width={slide_width}px)")
 
         for idx, slide in enumerate(slides, start=1):
             # 3. Get the transform and extract tx
@@ -697,7 +699,7 @@ class GetValue:       # get final values ready to add in file fields
                 "return window.getComputedStyle(arguments[0]).transform || 'none';",
                 slide
             )
-            logger_file.debug(f"[slide {idx}] raw transform: {transform}")
+            #logger_file.debug(f"[slide {idx}] raw transform: {transform}")
 
             # default tx=0 for 'none'
             tx = 0.0
@@ -706,14 +708,15 @@ class GetValue:       # get final values ready to add in file fields
                 if m:
                     tx = float(m.group(1))
                 else:
-                    logger_file.debug(f"[slide {idx}] couldn't parse tx from {transform}")
+                    pass
+                    #logger_file.debug(f"[slide {idx}] couldn't parse tx from {transform}")
 
-            logger_file.debug(f"[slide {idx}] translateX = {tx}px")
+            #logger_file.debug(f"[slide {idx}] translateX = {tx}px")
 
             # 4. Check that tx is essentially a multiple of slide_width
             #    (i.e. it's one of the carousel's discrete positions)
             if slide_width and abs(tx) % slide_width > 1e-3:
-                logger_file.debug(f"[slide {idx}] offset not aligned to slide width, skipping")
+                #logger_file.debug(f"[slide {idx}] offset not aligned to slide width, skipping")
                 continue
 
             # 5. Finally, verify the slide's bounding box sits inside the container
@@ -723,12 +726,13 @@ class GetValue:       # get final values ready to add in file fields
             )
             if (s_rect['left'] >= c_rect['left'] - 1 and
                     s_rect['right'] <= c_rect['right'] + 1):
-                logger_file.info(f"[slide {idx}] is fully in view — selecting as active")
+                #logger_file.info(f"[slide {idx}] is fully in view — selecting as active")
                 return slide
             else:
-                logger_file.debug(f"[slide {idx}] partially out of view, skipping")
+                pass
+                #logger_file.debug(f"[slide {idx}] partially out of view, skipping")
 
-        logger_file.warning("No active slide found.")
+        #logger_file.warning("No active slide found.")
         return None
 
     def get_image_srcs(self):
@@ -816,7 +820,7 @@ class GetValue:       # get final values ready to add in file fields
         self.driver.requests.clear()
         logger_file.debug(f"cleared network urls: {urls - len(self.fetch_urls_from_network_wire())}/{urls}")
 
-    def get_map_urls_grouped_size(self, size=None):
+    def get_map_urls_in_size(self, size=None):
         urls = self.fetch_urls_from_network_wire()    # new urls
         logger_file.debug(f"network urls after: {urls}")
         grouped = self.group_based_on_size(urls)  # {'14': [ur1, ur2], ..}
@@ -949,12 +953,12 @@ class Apartment:
             # 4. Zoom in default steps of zoom_canvas
             run_modules.zoom_canvas(canvas)
             time.sleep(1.2)
-            urls = get_value.get_map_urls_grouped_size(size='16')
+            urls = get_value.get_map_urls_in_size(size='16')
             if urls:
                 map_tile_handler = MapTileHandlerDivar()
                 self.file['map_tiles_urls'] = urls
                 self.file['map_tiles_buildings'] = map_tile_handler.get_tiles_location_and_buildings(urls)
-                logger_file.info(f"successfully filled 'map_tiles_urls'. {len(self.file['map_tiles_urls'])} map tiles urls")
+                logger_file.info(f"successfully filled 'map_tiles_urls'. {urls}")
             else:
                 logger_file.error(f"not found any urls in the network for map tiles.")
             time.sleep(5)
@@ -1302,6 +1306,15 @@ def get_files(location_to_search, max_files=1):
         logger.info(f"---card finder quited clean.")
 
 
+def is_page_expired(driver, url):
+    text_cases = ["این صفحه حذف شده یا وجود ندارد", "این آگهی حذف شده یا وجود ندارد"]  # text_cases[0] when page in unvalide
+
+    driver.get(url)
+    driver.implicitly_wait(10)
+    page_source = driver.page_source
+    return any(text in page_source for text in text_cases)
+
+
 def crawl_file():  # each thread runs separatly
     category = settings.CATEGORY
     is_ejare = settings.IS_EJARE
@@ -1371,6 +1384,96 @@ def crawl_file():  # each thread runs separatly
                 driver.quit()
                 logger.info(f"card crawler quited clean.")
                 set_driver_to_free(threading.current_thread().name, is_saved_to_redis, errors)  # required put before "if driver", driver could be None after uc_replacement_setup.get_driver_chrome and before reaching to uc_replacement_setup.driver = webdriver.Chrome..
+
+
+def provide_update_file():
+    # read from mongo, write to redis
+    try:
+        from fastapi_app.mongo_client import db_sync
+        update_period = settings.UPDATE_PERIOD
+        category = "apartment"  # mongo db
+
+        # Base query
+        query = {"expired": False}  # valid file in db ("expired": False), expired in divar or not
+
+        # For 'unlimited', no additional time filter is needed
+        # Sort by most recent first
+        if update_period == '1 day':
+            one_day_ago = datetime.now() - timedelta(days=1)
+            query["$or"] = [
+                {"created_at": {"$gte": one_day_ago}}
+            ]
+        elif update_period == '1 week':
+            one_week_ago = datetime.now() - timedelta(weeks=1)
+            query["$or"] = [
+                {"created_at": {"$gte": one_week_ago}}
+            ]
+
+        collection = getattr(db_sync, category)
+        files = list(collection.find(query).sort([("created_at", -1)]))
+        logger.info(f"{len(files)} unexpired files in monogo")
+
+        files_data = []
+        for file in files:
+            try:
+                files_data.append({"uid": file['uid'], 'url': file['url'], 'expired': file["expired"]})
+            except:
+                pass
+
+        REDIS.rpush("files_for_update", *[json.dumps(item) for item in files_data])  # each item in separate record
+        logger.info(f"successfully written {len(files_data)} files in 'files_for_update' redis")
+    except Exception as e:
+        logger.error(f"Failed getting files for update. error: {e}")
+
+
+def update_file():
+    logger_card.info(f"test card")
+    logger.info('test card')
+    total_files, expired_files = 0, 0
+    try:
+        from fastapi_app.mongo_client import db_sync
+        update_period = settings.UPDATE_PERIOD
+        category = "apartment"  # mongo db
+        driver = None
+
+        collection = getattr(db_sync, category)
+        while True:
+            try:
+                driver = uc_replacement_setup(
+                    threading.current_thread().name)  # if put inside while opens new page in every loop.
+                if driver:
+                    logger.info(f"driver loaded.")
+                else:
+                    logger.error(f"driver not loaded. exit")
+                    return
+                for i in range(settings.CARDS_EACH_DRIVER):
+                    try:
+                        file = get_files_for_update_redis()  # {'uid': 'AayAT-db', 'url': .., 'expired': False}
+                        if not file:
+                            logger.info(f"exit updating.")
+                            return True  # exit totally
+                        total_files += 1
+                        expired = is_page_expired(driver, file['url'])
+                        if True:
+                            collection.update_one({'uid': file['uid']}, {'$set': {'expire': True}})
+                            expired_files += 1
+                            logger.info(f"successfully set expired True on mongodb, uid {file['uid']}")
+                    except Exception as e:
+                        logger.error(f"failed reading page expire status. error: {e}")
+            except Exception as e:
+                logger.error(f"unexpected error during reading page expire status. exit totaly. error: {e}")
+                raise
+
+            finally:
+                if driver:
+                    driver.quit()
+                    logger.info(f"driver quited clean.")
+
+    except Exception as e:
+        logger.error(f"Failed updated expired files. error: {e}")
+
+    finally:       # runs from 'return ..'
+        logger_card.info(f"updated expired cards: {expired_files}/{total_files}")
 
 
 

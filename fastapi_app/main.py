@@ -1,6 +1,9 @@
-import logging
-from log_handler import init_logging
-init_logging()    # should import before critical local imports. now can use logging.ge..
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))  # Add parent directory to Python path to import central_logging
+# now you should import packages from django root dir as source
+from central_logging import init_central_logging, get_logger
+init_central_logging()
 
 from fastapi import FastAPI, HTTPException
 from typing import List, Dict, Optional
@@ -10,24 +13,28 @@ import environ
 import asyncio
 import os
 
-from methods import upload_and_get_image_paths, listen_redis
-from mongo_client import db
-from models import ApartmentItem
+from fastapi_app.methods import upload_and_get_image_paths, listen_redis
+from fastapi_app.mongo_client import db
+from fastapi_app.models import ApartmentItem
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
 env.read_env(os.path.join(BASE_DIR, '.env'))
 app = FastAPI()
 
-logger = logging.getLogger('fastapi')
+logger = get_logger('fastapi')
 
 
 @app.on_event("startup")
 async def start_consumer():  # runs in startup to always runs (keep listening to redis)
-    asyncio.create_task(listen_redis())
-    await db.apartment.create_index("uid", unique=False)
-    await db.zamin_kolangy.create_index("uid", unique=False)
-    await db.vila.create_index("uid", unique=False)  # non‐unique index
+    try:
+        await ApartmentItem.index_creation(db)
+    except:  # refresh indexes
+        await ApartmentItem.index_deletaion(db)
+        try:
+            await ApartmentItem.index_creation(db)
+        except:
+            raise
     asyncio.create_task(listen_redis())
 
 

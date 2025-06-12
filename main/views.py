@@ -1,3 +1,6 @@
+from central_logging import init_central_logging, get_logger
+init_central_logging()
+
 from django.shortcuts import render
 from django.http import HttpResponse
 from django.conf import settings
@@ -11,11 +14,11 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 import logging
 
-from .crawl import get_files, test_crawl
+from .crawl import get_files, test_crawl, provide_update_file
 from .crawl_setup import advance_setup, test_setup, uc_replacement_setup, set_driver_to_free
 from .serializers import FileMongoSerializer
 from .mongo_client import get_mongo_db, ConnectionFailure
-from .methods import add_final_card_to_redis, write_by_django, set_uid_url_redis, logger_file, MapTileHandlerBalad
+from .methods import add_final_card_to_redis, write_by_django, set_uid_url_redis, logger_file, get_files_for_update_redis
 from .redis_client import REDIS as r
 
 logger = logging.getLogger('web')
@@ -42,10 +45,10 @@ class test(APIView):
         #driver = test_setup()
         #driver.get(url)  # Load the web page
         #title = driver.title
-        print('1111111111111')
-        map_handler = MapTileHandlerBalad()
-        L = map_handler.get_tile_location_and_buildings("https://tiles.raah.ir/tiles/high/16/42133/25817.pbf?version=3")
-        return Response({'success': L})
+        dc = get_files_for_update_redis()
+        print('1111111111111', type(dc), dc)
+        #provide_update_file()
+        return Response({'success': 'L'})
 
 
 class CrawlView(APIView):

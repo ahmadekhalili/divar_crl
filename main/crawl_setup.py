@@ -100,7 +100,7 @@ def _apply_stealth_cdp(driver: webdriver.Chrome) -> None:
 
 def test_setup():
     options = Options()
-    options.binary_location = env("CHROME_PATH1")
+    options.binary_location = settings.CHROME_PATH1
     #options.add_argument("--headless=new")
     # Enable performance logging (for network tracing)
     options.add_argument("--disable-blink-features=AutomationControlled")
@@ -112,7 +112,7 @@ def test_setup():
     #options.add_argument('--disable-dev-shm-usage')
     # options.add_argument('--disable-gpu')
 
-    service = Service(executable_path=env("DRIVER_PATH1"))
+    service = Service(executable_path=settings.DRIVER_PATH1)
 
     driver = wire_webdriver.Chrome(service=service, options=options)
 
@@ -134,16 +134,17 @@ def test_setup():
 
 
 def advance_setup():
-    service = Service(driver_path=env('DRIVER_PATH1'))
+    service = Service(driver_path=settings.DRIVER_PATH1)
 
     options = uc.ChromeOptions()
 
-    options.binary_location = env('CHROME_PATH1')
+    options.binary_location = settings.CHROME_PATH1
     #options.add_argument("--headless")
     #options.add_argument(f"user-data-dir={env('CHROME_PROFILE_PATH')}")
     #options.add_argument(f"--profile-directory={env('CHROME_PROFILE_FOLDER')}")
-    #profile_path = os.path.join(os.getenv('APPDATA'), 'Local', 'Google', 'Chrome', 'User Data', 'Profile5')
-    #options.add_argument(f"user-data-dir={profile_path}")
+    profile_path = env("CHROME_PROFILE_PATH")
+    options.add_argument(f"--user-data-dir={profile_path}")
+    options.add_argument(f"--profile-directory={env('CHROME_PROFILE_FOLDER')}")
     #options.add_argument("--disable-extensions")
     options.add_argument('--no-sandbox')
     #options.add_argument('--disable-dev-shm-usage')
@@ -191,7 +192,7 @@ def uc_replacement_setup(thread_name=None):
             service = Service(executable_path=driver_chrome[0])
             options.binary_location = driver_chrome[1]
             options.set_capability("goog:loggingPrefs", {"performance": "ALL"})  # trace network
-            #options.add_argument("--headless=new")  # if you need headless
+            options.add_argument("--headless=new")  # if you need headless
             #profile_dir = env('CHROME_PROFILE_PATH').format(profile_num=my_profile)
             #options.add_argument(f"--user-data-dir={profile_dir}")
             #options.add_argument(f"--profile-directory={env('CHROME_PROFILE_FOLDER')}")
@@ -199,8 +200,8 @@ def uc_replacement_setup(thread_name=None):
             # options.add_argument(f"user-data-dir={profile_path}")
             # options.add_argument("--disable-extensions")
             options.add_argument('--no-sandbox')
-            #options.add_argument('--disable-dev-shm-usage')
-            #options.add_argument('--disable-gpu')
+            options.add_argument('--disable-dev-shm-usage')
+            options.add_argument('--disable-gpu')
 
             # –– 2) Anti-detection flags
             options.add_argument("--disable-blink-features=AutomationControlled")

@@ -27,6 +27,7 @@ logger = logging.getLogger('web')
 logger_separation = logging.getLogger("web_separation")
 logger_file = logging.getLogger('file')
 driver_logger = logging.getLogger('driver')
+logger_redis = logging.getLogger('redis')
 env = environ.Env()
 env.read_env(os.path.join(BASE_DIR, '.env'))
 
@@ -174,8 +175,8 @@ def get_paths_from_template(full_path: str,
 
 def add_driver_to_redis():  # rewrite (refresh with new dirs) if needed
     DRIVERS_CHROMS = []   # should be list of like: {'uid': None, 'driver_path': .., 'chrome_path': ..}
-    drivers_path = get_paths_from_template(env('DRIVER_PATH1'))
-    chromes_path = get_paths_from_template(env('CHROME_PATH1'))
+    drivers_path = get_paths_from_template(settings.DRIVER_PATH1)
+    chromes_path = get_paths_from_template(settings.CHROME_PATH1)
     limit = min(settings.DRIVERS_COUNT, len(drivers_path), len(chromes_path))
     for driver_dir, chrome_dir in zip(drivers_path[:limit], chromes_path[:limit]):  # auto iter based on smallest of drivers_path, chromes_path
         DRIVERS_CHROMS.append({'uid': None, 'driver_path': driver_dir, 'chrome_path': chrome_dir})
@@ -211,6 +212,7 @@ def set_uid_url_redis(cards, data_key='uid_url_list', uid_set_key='unique_uid'):
     """
     added_count = 0
     duplicate_count = 0
+    duplicate_uids = []
 
     for uid, url in cards:
         if REDIS.sadd(uid_set_key, uid):  # Returns 1 if added (unique), 0 if already exists
@@ -218,8 +220,10 @@ def set_uid_url_redis(cards, data_key='uid_url_list', uid_set_key='unique_uid'):
             added_count += 1
         else:
             duplicate_count += 1
+            duplicate_uids.append(uid)
 
-    logger.debug(f"Added cards to redis: {added_count}, duplicates not added: {duplicate_count}")
+    logger_redis.info(f"duplicates (skiped): {duplicate_count}, duplicate uids: {duplicate_uids}")
+    logger.info(f"---Added cards to redis to start crawl: {added_count}, duplicates not added: {duplicate_count}")
     return added_count
 
 def get_uid_url_redis():  # return (None, None) in blank is required
@@ -240,6 +244,25 @@ def get_uid_url_redis():  # return (None, None) in blank is required
     except Exception as e:
         logger_file.error(f"Error getting from redis record. error: {e}")
     return uid, url
+
+
+def get_files_for_update_redis():  # return (None, None) in blank is required
+    # Blocks until an element is available
+    # suppose 20 threads arrive here; Redis makes each thread block (sleep). They do not consume CPU
+    key_name = "files_for_update"
+    try:
+        logger_file.info("pending to get file to update...")
+        item = REDIS.blpop(key_name, timeout=settings.CARD_CRAWLER_PENDDINGS)  # pops oldest item (left-most), brpop newest. returns None after 120
+        if item:
+            value = json.loads(item[1])
+            remaining = REDIS.llen(key_name)  # get remaining number of items
+            logger_file.info(f"file uid {value['uid']} popped successfully from redis. remains cards in db: {remaining}")
+            return value
+        else:
+            logger_file.info(f"there isn't any card in redis.")
+    except Exception as e:
+        logger_file.error(f"Error getting from redis record. error: {e}")
+    return None
 
 
 class MapTileHandlerBalad:  # in crawl, its for divar canvas
