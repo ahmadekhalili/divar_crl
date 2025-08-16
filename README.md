@@ -7,18 +7,30 @@ A Django-based web crawler system for scraping real estate listings from Divar.i
 ### 1. Prerequisites Installation
 
 #### 📦 Required Services
+- mongo
+- redis
+- fastapi
 ```bash
-# MongoDB
-https://www.mongodb.com/try/download/community
-https://www.mongodb.com/try/download/shell
-net start MongoDB
-
-# Redis
+# MongoDB, Redis
+docker run -d --name mongo -p 27017:27017 -v mongo_data:/data/db mongo:latest
 docker run -d --name redis -p 6379:6379 -v redis_data:/data redis/redis-stack-server:latest
 
-# PostgreSQL (optional)
-# Run on localhost:5432
+# Fastapi
+uvicorn main:app --host 0.0.0.0 --port 8001 --log-level debug --access-log --reload
+
+# other comands
+python manage.py crawl  # 🏃‍♂️ Start crawling (multi-threaded), recommended set socks5 proxy (http proxy not works)
+python manage.py update  # 🔄 Update existing listings and mark expired
+python manage.py runserver
+
+# list of images
+docker pull redis/redis-stack-server:latest
+docker pull postgres:16
+docker pull mongo:latest
+docker pull docker.elastic.co/elasticsearch/elasticsearch:latest
 ```
+
+
 
 #### 🍃 MongoDB Setup
 ```bash
@@ -73,7 +85,7 @@ Configure crawler settings in `divar_crl/settings.py`:
 
 ```python
 # 🎯 Target Configuration (must be set together!)
-APARTMENT_EJARE_ZAMIN = "https://divar.ir/s/tehran/buy-apartment"
+FILE_STATUS = "https://divar.ir/s/tehran/buy-apartment"
 CATEGORY = "apartment"  # Options: 'apartment', 'zamin_kolangy', 'vila'
 IS_EJARE = False  # True for rental, False for sale
 
@@ -81,23 +93,6 @@ IS_EJARE = False  # True for rental, False for sale
 TEST_MANUAL_CARD_SELECTION = None  # or [(file_uid, file_url)] for specific testing
 ```
 
-## 🎮 Running the Crawler
-
-### Main Commands
-
-```bash
-# 🏃‍♂️ Start main crawler (multi-threaded)
-python manage.py crawl
-
-# 🔄 Update existing listings and mark expired
-python manage.py update
-
-# 🌐 Run Django development server
-python manage.py runserver
-
-# ⚡ Start FastAPI service (port 8001)
-uvicorn fastapi_app.main:app --port 8001
-```
 
 ### Test Endpoints
 
@@ -111,7 +106,7 @@ All three settings must be configured together:
 
 | Setting | Description | Example Values |
 |---------|-------------|----------------|
-| `APARTMENT_EJARE_ZAMIN` | Target URL for crawling | Different URLs for each category/type |
+| `FILE_STATUS` | Target URL for crawling | Different URLs for each category/type |
 | `CATEGORY` | Property type | `apartment`, `zamin_kolangy`, `vila` |
 | `IS_EJARE` | Rental vs Sale | `True` (rental), `False` (sale) |
 

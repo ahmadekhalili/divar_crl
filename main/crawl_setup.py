@@ -100,34 +100,17 @@ def _apply_stealth_cdp(driver: webdriver.Chrome) -> None:
 
 def test_setup():
     options = Options()
-    options.binary_location = settings.CHROME_PATH1
+    service = Service(executable_path=env("DRIVER_PATH1_win"))
+    options.binary_location = env("CHROME_PATH1_win")
     #options.add_argument("--headless=new")
-    # Enable performance logging (for network tracing)
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
 
     # Optional but useful Chrome args
     #options.add_argument("--incognito")
     options.add_argument("--no-sandbox")
-    #options.add_argument('--disable-dev-shm-usage')
-    # options.add_argument('--disable-gpu')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
 
-    service = Service(executable_path=settings.DRIVER_PATH1)
-
-    driver = wire_webdriver.Chrome(service=service, options=options)
-
-    # Enable network domain and disable cache for consistent behavior
-    # 2) Enable Network with big buffers
-    driver.execute_cdp_cmd("Network.enable", {
-        "maxResourceBufferSize": 100 * 1024 * 1024,
-        "maxTotalBufferSize": 200 * 1024 * 1024
-    })
-    driver.execute_cdp_cmd("Network.setCacheDisabled", {"cacheDisabled": True})
-    driver.execute_cdp_cmd("Target.setAutoAttach", {
-        "autoAttach": True,
-        "waitForDebuggerOnStart": False,
-        "flatten": True  # Required to merge workers
-    })
+    driver = webdriver.Chrome(service=Service(executable_path=env("DRIVER_PATH1_win")), options=options)
 
     driver.maximize_window()
     return driver
@@ -192,7 +175,8 @@ def uc_replacement_setup(thread_name=None):
             service = Service(executable_path=driver_chrome[0])
             options.binary_location = driver_chrome[1]
             options.set_capability("goog:loggingPrefs", {"performance": "ALL"})  # trace network
-            options.add_argument("--headless=new")  # if you need headless
+            if settings.HEADLESS:
+                options.add_argument("--headless=new")  # if you need headless
             #profile_dir = env('CHROME_PROFILE_PATH').format(profile_num=my_profile)
             #options.add_argument(f"--user-data-dir={profile_dir}")
             #options.add_argument(f"--profile-directory={env('CHROME_PROFILE_FOLDER')}")
@@ -246,7 +230,8 @@ def uc_replacement_setup(thread_name=None):
         #time.sleep(0.41)  # a slight pause to mimic natural behavior
         #actions = HumanMouseMove.human_mouse_move(actions, (random.randint(0, 500), random.randint(0, 500)), (random.randint(0, 500), random.randint(0, 500)))
         #logger.debug('human_mouse_move was run')
-        #driver.maximize_window()  dont use in headless
+        if not settings.HEADLESS:
+            driver.maximize_window()    # dont use in headless
     except Exception as e:     # highly import quite driver safly and dont lost and let it open indie tones of blocks of try exception...
         logger.error(f"failed hide mecanism after driver creation. quite driver safty. reason: {e}")
         driver.quit()

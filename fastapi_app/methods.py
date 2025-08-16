@@ -37,7 +37,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent  # This gives you: django_root
 env = environ.Env()
 env.read_env(os.path.join(BASE_DIR, '.env'))
 
-r = redis.Redis()
+r = redis.Redis(host=env("REDIS_HOST"))
 
 card_logger = get_logger('cards')
 logger = get_logger('fastapi')

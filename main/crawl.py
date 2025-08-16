@@ -112,8 +112,8 @@ class RunModules:        # run a task (for example close map, go next image, ...
                 # 2) scroll into view
                 self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
 
-                # 3) normal click
-                btn.click()
+                # 3) normal click not works
+                ActionChains(self.driver).move_to_element(btn).click().perform()
                 logger.info(f"map closed successfully")
                 return  # success
 
@@ -1209,11 +1209,12 @@ class Vila(Apartment):  # file data same with apartment
             pass
 
 def get_files(location_to_search, max_files=1):
-    # cards_on_screen just for test. crawl only specific card. its value is a ["a card element (html)"]
+    # get cards (uid and url) and add them to redis (via set_uid_url_redis)
+    # if max_files more than 10, scroll until reach end of page.
     driver = uc_replacement_setup()
     wait = WebDriverWait(driver, 10)
     base_url = "https://divar.ir"
-    url = settings.APARTMENT_EJARE_ZAMIN
+    url = settings.FILE_STATUS
     retry, attempt = 2, 1
     #url = ""
     # video

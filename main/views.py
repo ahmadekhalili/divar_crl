@@ -32,21 +32,48 @@ import os
 import environ
 import threading
 import requests
+import redis
 
 env = environ.Env()
-environ.Env.read_env(os.path.join(Path(__file__).resolve().parent.parent.parent, '.env'))
-import redis
+environ.Env.read_env(os.path.join(Path(__file__).resolve().parent.parent, '.env'))  # point to django root dir
+
 
 class test(APIView):
     def get(self, request):
+        from selenium.webdriver.common.action_chains import ActionChains
+        import time
         #get_mongo_db()['test'].insert_one({'message': 'hi2'})
-        #url = "https://divar.ir/s/tehran/buy-apartment"
+        url = "https://divar.ir/s/tehran/buy-apartment"
         #thread_name = 'test'
-        #driver = test_setup()
-        #driver.get(url)  # Load the web page
+        driver = test_setup()
+        try:
+            driver.get(url)  # Load the web page
+            
+            xpath = (
+                "//div[@role='button']"
+                "[.//div[contains(@class,'kt-fab-button--raised') "
+                "and normalize-space(text())='بستن نقشه']]"
+            )
+            logger.info(f"going to find element")
+            btn2 = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "//div[contains(text(), 'بستن نقشه')]"))
+            )
+
+            #btn = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, xpath)))
+            logger.info(f"going to click element")
+            ActionChains(driver).move_to_element(btn2).click().perform()
+            btn2.click()
+            driver.execute_script("arguments[0].click();", btn2)
+            logger.info(f"clicked on the close button")
+            time.sleep(4)
+
+        except Exception as e:
+            logger.error(f"failed, error: {e}")
+        finally:
+            driver.quit()
         #title = driver.title
-        dc = get_files_for_update_redis()
-        print('1111111111111', type(dc), dc)
+        #dc = get_files_for_update_redis()
+        #print('1111111111111', type(dc), dc)
         #provide_update_file()
         return Response({'success': 'L'})
 

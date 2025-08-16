@@ -12,7 +12,7 @@ from .methods import sync_upload_and_get_image_paths
 from .mongo_client import get_mongo_db, ConnectionFailure
 
 env = environ.Env()
-environ.Env.read_env(os.path.join(Path(__file__).resolve().parent.parent.parent, '.env'))
+environ.Env.read_env(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
 logger = logging.getLogger('web')
 logger_file = logging.getLogger('file')
 

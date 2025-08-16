@@ -35,7 +35,7 @@ uvicorn fastapi_app.main:app --port 8001
 
 ### Environment Configuration (.env)
 Key settings that must be configured together:
-- `APARTMENT_EJARE_ZAMIN`: Target URL for crawling
+- `FILE_STATUS`: Target URL for crawling
 - `CATEGORY`: "apartment", "zamin_kolangy", or "vila" 
 - `IS_EJARE`: Boolean for rental vs sale listings
 

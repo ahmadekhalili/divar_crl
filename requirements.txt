@@ -21,3 +21,10 @@ selenium-wire==5.1.0
 blinker==1.4
 mapbox-vector-tile
 motor
+uvicorn
+fastapi
+httpx
+aiofiles
+redis
+pydantic
+python-multipart
