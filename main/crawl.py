@@ -351,24 +351,50 @@ class GetElement:    # get specific element and return its value
         self.file = file
 
     def get_title_from_cardbox(self, card):  # get title from card box (not inside file page)
-        try:
-            title_element = card.find_element(By.CSS_SELECTOR, "h2.unsafe-kt-post-card__title")
-            logger.info(f"first attempt title_element bool: {bool(title_element)}")
-            if not title_element:
-                title_element = card.find_elements(By.CSS_SELECTOR, '.kt-new-post-card__title')
-                logger.info(f"sec attempt title_elements: {title_element}")
-            title = title_element.text.strip()
-            return True, title
-            # Target the specific 'a' tag using its class
-        except Exception as e:
-            return False, e
+        # Try multiple selectors for title
+        title_selectors = [
+            "h2.kt-post-card__title",           # Current selector based on HTML
+            "h2.unsafe-kt-post-card__title",    # Previous selector (fallback)
+            ".kt-new-post-card__title",         # Alternative selector
+            "h2[class*='title']",               # Any h2 with title in class
+            "h2"                                # Ultimate fallback
+        ]
+        
+        for i, selector in enumerate(title_selectors):
+            try:
+                title_element = card.find_element(By.CSS_SELECTOR, selector)
+                if title_element and title_element.text.strip():
+                    title = title_element.text.strip()
+                    logger.info(f"Found title with selector {i+1}: {selector}")
+                    return True, title
+            except Exception:
+                continue
+        
+        logger.error("Could not find title with any selector")
+        return False, "Could not find title element"
 
     def get_url_from_cardbox(self, card):
-        try:
-            link_element = card.find_element(By.CSS_SELECTOR, "a.unsafe-kt-post-card__action")
-            return True, link_element.get_attribute('href')
-        except Exception as e:
-            return False, e
+        # Try multiple selectors for URL
+        url_selectors = [
+            "a.kt-post-card__action",           # Current selector based on HTML
+            "a.unsafe-kt-post-card__action",    # Previous selector (fallback)
+            "a[href*='/v/']",                   # Any link containing '/v/' (divar post pattern)
+            "a[class*='action']",               # Any link with action in class
+            "a"                                 # Ultimate fallback
+        ]
+        
+        for i, selector in enumerate(url_selectors):
+            try:
+                link_element = card.find_element(By.CSS_SELECTOR, selector)
+                href = link_element.get_attribute('href')
+                if href and '/v/' in href:  # Validate it's a proper divar post URL
+                    logger.info(f"Found URL with selector {i+1}: {selector}")
+                    return True, href
+            except Exception:
+                continue
+        
+        logger.error("Could not find URL with any selector")
+        return False, "Could not find URL element"
 
     def get_uid(self, url):
         try:
@@ -949,11 +975,11 @@ class Apartment:
             elif run_modules.available_map_element:
                 self.file_errors.append(is_uploaded[1])
 
-            get_value.clear_network()
+            # get_value.clear_network()  # wire disabled
             # 4. Zoom in default steps of zoom_canvas
             run_modules.zoom_canvas(canvas)
             time.sleep(1.2)
-            urls = get_value.get_map_urls_in_size(size='16')
+            urls = []#get_value.get_map_urls_in_size(size='16')  # wire disabled, wire selenium is so unstable, should find other way get map urls
             if urls:
                 map_tile_handler = MapTileHandlerDivar()
                 self.file['map_tiles_urls'] = urls
@@ -1245,17 +1271,33 @@ def get_files(location_to_search, max_files=1):
             cards = []  # using set() make unordered of cards
             unique_cards_counts = 0
             while True:
-                try:
-                    card_selector = "article.unsafe-kt-post-card"
-                    wait.until(EC.presence_of_element_located(
-                        (By.CSS_SELECTOR,
-                         card_selector)))  # driver.find_elements(By.CSS_SELECTOR, 'article.kt-post-card')
-                    # 2. Find all card elements now that we know they exist
-                    cards_on_screen = driver.find_elements(By.CSS_SELECTOR, card_selector)
-                    logger.info(f"cards_on_screen: {len(cards_on_screen)}")
-                except Exception as e:
-                    logger.error(f"Fails getting cards via article.kt-post-card element. error: {e}")
-                    cards_on_screen = []
+                cards_on_screen = []
+                
+                # Try multiple selectors in case the website structure changes
+                card_selectors = [
+                    "article.kt-post-card",           # Current selector based on HTML
+                    "article.unsafe-kt-post-card",    # Previous selector (fallback)
+                    "article[class*='post-card']",    # Any article with post-card in class
+                    ".kt-post-card",                  # Class-only selector
+                    "article"                         # Ultimate fallback
+                ]
+                
+                for i, card_selector in enumerate(card_selectors):
+                    try:
+                        logger.info(f"Trying card selector {i+1}/{len(card_selectors)}: {card_selector}")
+                        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, card_selector)))
+                        cards_on_screen = driver.find_elements(By.CSS_SELECTOR, card_selector)
+                        
+                        if cards_on_screen:
+                            logger.info(f"Found {len(cards_on_screen)} cards with selector: {card_selector}")
+                            break
+                    except Exception as e:
+                        logger.warning(f"Selector {card_selector} failed: {e}")
+                        continue
+                
+                if not cards_on_screen:
+                    logger.error("Could not find any cards with any selector")
+                    break
                 get_element = GetElement(driver)
                 urls_of_cards = [url for uid, url in cards]
                 for card in cards_on_screen:

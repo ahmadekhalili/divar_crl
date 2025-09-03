@@ -234,12 +234,12 @@ AGENTS = [
 ]
 RETRY_FOR_DRIVER = 2      # retry numbers to attempt and wait to find free driver and exit the card crawler thread?
 CARD_CRAWLER_PENDDINGS = 20     # in sec; how much wait and exit thread.
-DRIVERS_COUNT = 3         # important; number of drivers & chrome to use. crawl threads = DRIVERS_COUNT-1. redis connection = DRIVERS_COUNT + 5
-CARDS_EACH_DRIVER = 7    # how much cards crawl with each driver. agent and .. refresh after CARDS_EACH_DRIVER cards crawled
+DRIVERS_COUNT = 6         # important; number of drivers & chrome to use. crawl threads = DRIVERS_COUNT-1. redis connection = DRIVERS_COUNT + 5
+CARDS_EACH_DRIVER = 3    # how much cards crawl with each driver. agent and .. refresh after CARDS_EACH_DRIVER cards crawled
 
-HEADLESS = False         # open browser or clrawl in headless mode, CHROME_PATH1_win should change manually
-MAX_FILE_CRAWL = 1   # number of files to crawl
+MAX_FILE_CRAWL = 20   # number of files to crawl
 MAX_IMAGE_CRAWL = 50  # skip further images, if a file has more that 20 images
+HEADLESS = True         # open browser or clrawl in headless mode, CHROME_PATH1_win should change manually
 WRITE_REDIS_MONGO = True   # add each crawled card to redis (enable redis/mongo flow | use django own db)
 
 # ignore all threads, only 1 thread

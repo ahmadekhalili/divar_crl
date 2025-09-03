@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
 import time
 import logging
 
@@ -38,7 +39,7 @@ env = environ.Env()
 environ.Env.read_env(os.path.join(Path(__file__).resolve().parent.parent, '.env'))  # point to django root dir
 
 
-class test(APIView):
+class test_close_map(APIView):
     def get(self, request):
         from selenium.webdriver.common.action_chains import ActionChains
         import time
@@ -49,23 +50,92 @@ class test(APIView):
         try:
             driver.get(url)  # Load the web page
             
-            xpath = (
-                "//div[@role='button']"
-                "[.//div[contains(@class,'kt-fab-button--raised') "
-                "and normalize-space(text())='بستن نقشه']]"
-            )
-            logger.info(f"going to find element")
-            btn2 = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, "//div[contains(text(), 'بستن نقشه')]"))
-            )
-
-            #btn = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, xpath)))
-            logger.info(f"going to click element")
-            ActionChains(driver).move_to_element(btn2).click().perform()
-            btn2.click()
-            driver.execute_script("arguments[0].click();", btn2)
-            logger.info(f"clicked on the close button")
-            time.sleep(4)
+            # Wait for page to load completely
+            time.sleep(3)
+            
+            # Multiple XPath strategies to find the close map button
+            xpaths_to_try = [
+                # Strategy 1: Based on your HTML structure
+                "//div[@role='button' and contains(@class, 'absolute')]//div[contains(text(), 'بستن نقشه')]",
+                # Strategy 2: More specific with kt-fab-button class
+                "//div[@role='button']//div[contains(@class, 'kt-fab-button') and contains(text(), 'بستن نقشه')]",
+                # Strategy 3: Looking for the icon and text combination
+                "//div[@role='button']//div[contains(@class, 'kt-fab-button')]//i[contains(@class, 'kt-icon-close')]/parent::div",
+                # Strategy 4: Direct text search
+                "//div[contains(text(), 'بستن نقشه')]",
+                # Strategy 5: Your original xpath
+                "//div[@role='button'][.//div[contains(@class,'kt-fab-button--raised') and normalize-space(text())='بستن نقشه']]",
+                # Strategy 6: Looking for the parent container
+                "//div[contains(@class, 'absolute') and @role='button']"
+            ]
+            
+            btn2 = None
+            successful_xpath = None
+            
+            for i, xpath in enumerate(xpaths_to_try):
+                try:
+                    logger.info(f"Trying XPath strategy {i+1}: {xpath}")
+                    btn2 = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, xpath)))
+                    successful_xpath = xpath
+                    logger.info(f"Successfully found element with strategy {i+1}")
+                    break
+                except TimeoutException:
+                    logger.warning(f"XPath strategy {i+1} failed, trying next...")
+                    continue
+                except Exception as e:
+                    logger.warning(f"XPath strategy {i+1} failed with error: {e}")
+                    continue
+            
+            if btn2 is None:
+                logger.error("Could not find the close map button with any strategy")
+                return Response({'error': 'Button not found'})
+            
+            logger.info(f"Found element HTML: {btn2.get_attribute('outerHTML')}")
+            logger.info(f"Element location: {btn2.location}")
+            logger.info(f"Element size: {btn2.size}")
+            logger.info(f"Element displayed: {btn2.is_displayed()}")
+            logger.info(f"Element enabled: {btn2.is_enabled()}")
+            
+            # Scroll element into view
+            driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", btn2)
+            time.sleep(1)
+            
+            # Try multiple click strategies
+            click_strategies = [
+                ("Regular click", lambda: btn2.click()),
+                ("JavaScript click", lambda: driver.execute_script("arguments[0].click();", btn2)),
+                ("ActionChains click", lambda: ActionChains(driver).move_to_element(btn2).click().perform()),
+                ("ActionChains with pause", lambda: ActionChains(driver).move_to_element(btn2).pause(0.5).click().perform()),
+                ("Force JavaScript click", lambda: driver.execute_script("arguments[0].dispatchEvent(new MouseEvent('click', {bubbles: true}));", btn2))
+            ]
+            
+            for strategy_name, click_func in click_strategies:
+                try:
+                    logger.info(f"Attempting {strategy_name}")
+                    click_func()
+                    logger.info(f"Successfully clicked using {strategy_name}")
+                    time.sleep(2)  # Wait to see if click was successful
+                    
+                    # Check if map is closed by looking for the button disappearing
+                    # or page changes
+                    try:
+                        WebDriverWait(driver, 3).until_not(EC.element_to_be_clickable((By.XPATH, successful_xpath)))
+                        logger.info("Map appears to be closed (button disappeared)")
+                        break
+                    except:
+                        logger.info("Button still visible, checking if map state changed")
+                        # You could add additional checks here to verify if map is closed
+                        break
+                        
+                except ElementClickInterceptedException as e:
+                    logger.warning(f"{strategy_name} failed with intercepted exception: {e}")
+                    continue
+                except Exception as e:
+                    logger.warning(f"{strategy_name} failed: {e}")
+                    continue
+            
+            logger.info(f"Click operation completed")
+            time.sleep(5)  # Reduced from 40 seconds for testing
 
         except Exception as e:
             logger.error(f"failed, error: {e}")
@@ -76,6 +146,36 @@ class test(APIView):
         #print('1111111111111', type(dc), dc)
         #provide_update_file()
         return Response({'success': 'L'})
+
+
+class Test(APIView):
+    """Simple fallback approach for closing the map button"""
+    def get(self, request):
+        from selenium.webdriver.common.action_chains import ActionChains
+        import time
+        
+        url = "https://divar.ir/s/tehran/buy-apartment"
+        driver = test_setup()
+        try:
+            driver.get(url)
+            time.sleep(5)  # Wait for page to load
+
+            xpath = (
+            "//div[@role='button']"
+            "[.//div[contains(@class,'kt-fab-button--raised') "
+            "and normalize-space(text())='بستن نقشه']]"
+        )
+            btn = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, xpath))
+                )
+            btn.click()
+            time.sleep(2)
+        except Exception as e:
+            logger.error(f"Simple test failed: {e}")
+        finally:
+            driver.quit()
+            
+        return Response({'success': 'Simple test completed'})
 
 
 class CrawlView(APIView):

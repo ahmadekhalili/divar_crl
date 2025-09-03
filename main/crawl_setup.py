@@ -37,7 +37,9 @@ lock_thread = threading.Lock()
 
 @retry_func(max_attempts=settings.RETRY_FOR_DRIVER, delay=20, fail_message_after_attempts='No free driver', loger=driver_logger)
 def get_driver_chrome(thread_name=None):
-    """Try to acquire a free driver in a thread-safe way. Return paths or False if none."""
+    """Try to acquire a free driver in a thread-safe way. Return paths or False if none.
+        redis structure is like: ["uid": <thread_name>, "driver_path": <driver_path>, "chrome_path": <chrome_path>],
+        each calling of get_driver_chrome fill the thread name on a blank uid"""
     with lock_thread:
         DRIVERS_CHROMS = get_driver_from_redis()
         driver_logger.debug(f"content of DRIVERS_CHROMS from redis: {DRIVERS_CHROMS}")
@@ -203,7 +205,7 @@ def uc_replacement_setup(thread_name=None):
             options.set_capability("acceptInsecureCerts", True)
             # If you had other caps: options.set_capability("someCap", someValue)
 
-            driver = wire_webdriver.Chrome(service=service, options=options)
+            driver = webdriver.Chrome(service=service, options=options)
             break
         except:
             logger.error(f"Failed initializing driver. attempts: {i+1}/{driver_load_retries}")

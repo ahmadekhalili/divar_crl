@@ -16,6 +16,8 @@ docker run -d --name mongo -p 27017:27017 -v mongo_data:/data/db mongo:latest
 docker run -d --name redis -p 6379:6379 -v redis_data:/data redis/redis-stack-server:latest
 
 # Fastapi
+docker compose up --build -d  # start fastapi in 0.0.0.0:8001
+# or
 uvicorn main:app --host 0.0.0.0 --port 8001 --log-level debug --access-log --reload
 
 # other comands
